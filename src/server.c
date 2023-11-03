@@ -32,12 +32,15 @@ int main() {
         int pid = fork();
 
         if (pid == 0) {
-            printf("accept value %d\n", cd);
-            read(cd, buf, 1000);
-            int fd = open(buf, O_RDONLY);
-            read(fd, buf, 1000);
-            write(cd, buf, strlen(buf));
-            printf("MESSAGE FROM CLIENT: %s\n", buf);
+
+            for (;;){
+                printf("accept value %d\n", cd);
+                read(cd, buf, 1000);
+                int fd = open(buf, O_RDONLY);
+                read(fd, buf, 1000);
+                write(cd, buf, strlen(buf));
+                printf("MESSAGE FROM CLIENT: %s\n", buf);
+            }
 
             close(cd);
 
