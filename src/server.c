@@ -6,10 +6,47 @@
 #include <string.h>
 #include <fcntl.h>
 
+#include "common.h"
+
+typedef int Worker;
+Worker workers[10];
+int workerCnt = 0;
+
+void add_worker(int cd){
+    workers[workerCnt++] = cd;
+}
+
+void remove_worker(int cd){
+    // to do
+}
+
+void listen_for_messages(int cd, char buf[MAX_BUF_SIZE]){
+    printf("accept value %d\n", cd);
+    read(cd, buf, MAX_BUF_SIZE);
+    
+    // define index values in common.h
+    if (buf[0] == MSG_TYPE_COMMAND){
+        if (buf[1] == CMD_ADD){
+            if (buf[2] == HOST_TYPE_WORKER){
+                add_worker(cd);
+                // find a way to do this without using a string
+                write(cd, CONNECTION_ACCEPTED_STR, strlen(CONNECTION_ACCEPTED_STR));
+            }
+        }
+    }
+
+    // int fd = open(buf, O_RDONLY);
+    // read(fd, buf, MAX_BUF_SIZE);
+    // write(cd, buf, strlen(buf));
+    // printf("MESSAGE FROM CLIENT: %s\n", buf);
+}
 
 int main() {
+
+
+
     int sd, cd;
-    char buf[1000] = "", fname[10];
+    char buf[MAX_BUF_SIZE] = "", fname[10];
     struct sockaddr_in ser;
 
     // Create a socket
@@ -34,12 +71,7 @@ int main() {
         if (pid == 0) {
 
             for (;;){
-                printf("accept value %d\n", cd);
-                read(cd, buf, 1000);
-                int fd = open(buf, O_RDONLY);
-                read(fd, buf, 1000);
-                write(cd, buf, strlen(buf));
-                printf("MESSAGE FROM CLIENT: %s\n", buf);
+                listen_for_messages(cd, buf);
             }
 
             close(cd);
