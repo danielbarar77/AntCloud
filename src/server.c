@@ -2,23 +2,34 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <arpa/inet.h>
 #include <string.h>
 #include <fcntl.h>
+#include <pthread.h>
 
 #include "common.h"
 
-typedef int Worker;
-Worker workers[10];
-int workerCnt = 0;
+#define MAX_NR_THREADS 10
+//#define MAX_NR_WORKERS 10
 
-void add_worker(int cd){
-    workers[workerCnt++] = cd;
-}
+struct parameters{
+    int connectionDescriptor
+};
 
-void remove_worker(int cd){
-    // to do
-}
+typedef struct parameters parameters_t;
+
+// typedef int Worker;
+// Worker workers[MAX_NR_WORKERS];
+// int workerCnt = 0;
+
+// void add_worker(int cd){
+//     workers[workerCnt++] = cd;
+// }
+
+// void remove_worker(int cd){
+//     // to do
+// }
 
 void listen_for_messages(int cd, char buf[MAX_BUF_SIZE]){
     printf("accept value %d\n", cd);
@@ -41,13 +52,24 @@ void listen_for_messages(int cd, char buf[MAX_BUF_SIZE]){
     // printf("MESSAGE FROM CLIENT: %s\n", buf);
 }
 
+void* cmdListener(void* params) {
+    parameters_t p = *((parameters_t*)params);
+    printf("Test thread, cd: %d\n", p.connectionDescriptor);
+
+
+    free(params);
+
+    return NULL;
+}
+
+
 int main() {
-
-
-
-    int sd, cd;
+    int sd;
     char buf[MAX_BUF_SIZE] = "", fname[10];
     struct sockaddr_in ser;
+
+    pthread_t threads[MAX_NR_THREADS];
+    int nrOfThreads = 0;
 
     // Create a socket
     sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -64,19 +86,35 @@ int main() {
 
     listen(sd, 5);
 
-    for (;;) {
-        cd = accept(sd, NULL, NULL);
-        int pid = fork();
+    while (1) {
+        if (nrOfThreads != MAX_NR_THREADS) {
+            parameters_t *params = malloc(sizeof(parameters_t));
 
-        if (pid == 0) {
-
-            for (;;){
-                listen_for_messages(cd, buf);
+            if (params == NULL){
+                perror("Failed to allocate thread parameters!\n");
+                exit(1);
             }
 
-            close(cd);
+            memset(params, 0, sizeof(*params));
 
+            params->connectionDescriptor = accept(sd, NULL, NULL);
+
+            if (params->connectionDescriptor == -1) {
+                perror("Could not accept connection!");
+                free(params);
+            } else {
+                int errorCode = pthread_create(&(threads[nrOfThreads]), NULL, cmdListener, (void *) params);
+
+                if (errorCode != 0){
+                    perror("Error creating thread!\n");
+                    exit(1);
+                }
+
+                nrOfThreads++;
+            }
+       
         }
+
 
     }
 
