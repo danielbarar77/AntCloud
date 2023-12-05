@@ -6,22 +6,13 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>
 
 #include "common.h"
 
-void greet_sv(int sd){
-    int buf[] = {
-        MSG_TYPE_COMMAND,
-        CMD_ADD,
-        HOST_TYPE_WORKER
-    };
-
-    write(sd, buf, 3);
-}
-
 int main() {
-    int sd, cd;
-    char buf[MAX_BUF_SIZE] = "", buf1[MAX_BUF_SIZE] = "";
+    int sd;
+    char buf[MAX_BUF_SIZE] = "";
     struct sockaddr_in ser;
 
     // Create a socket
@@ -41,13 +32,14 @@ int main() {
 
     // Greet the server
     printf("Greeting server...\n");
-    greet_sv(sd);
-    read(sd, buf, MAX_BUF_SIZE);
-    if(strcmp(buf, CONNECTION_ACCEPTED_STR)){
-        printf("ERR: Server did not accept greeting!");
-        exit(-1);
-    }
-    printf("Server accepted greeting!\n");
+    write(sd, WORKER_GREETING, sizeof(WORKER_GREETING));
+    
+    // read(sd, buf, MAX_BUF_SIZE);
+    // if(strcmp(buf, CONNECTION_ACCEPTED_STR)){
+    //     printf("ERR: Server did not accept greeting!");
+    //     exit(-1);
+    // }
+    // printf("Server accepted greeting!\n");
 
     // for (;;) {
 

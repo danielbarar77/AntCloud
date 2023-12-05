@@ -7,55 +7,38 @@
 #include <string.h>
 #include <fcntl.h>
 #include <pthread.h>
+#include <unistd.h>
 
 #include "common.h"
 
 #define MAX_NR_THREADS 10
-//#define MAX_NR_WORKERS 10
 
 struct parameters{
-    int connectionDescriptor
+    int cd // connection descriptor
 };
 
 typedef struct parameters parameters_t;
 
-// typedef int Worker;
-// Worker workers[MAX_NR_WORKERS];
-// int workerCnt = 0;
+void* cmdListener(parameters_t* params) {
+    printf("Test thread, cd: %d\n", params->cd);
+    char buf[MAX_BUF_SIZE];
+    int rc = 0, wc = 0;
 
-// void add_worker(int cd){
-//     workers[workerCnt++] = cd;
-// }
+    while(1){
+        rc = read(params->cd, buf, MAX_BUF_SIZE);
 
-// void remove_worker(int cd){
-//     // to do
-// }
+        if (rc == -1){
+            perror("Could not read from socket!");
+            exit(1);
+        }
 
-void listen_for_messages(int cd, char buf[MAX_BUF_SIZE]){
-    printf("accept value %d\n", cd);
-    read(cd, buf, MAX_BUF_SIZE);
-    
-    // define index values in common.h
-    if (buf[0] == MSG_TYPE_COMMAND){
-        if (buf[1] == CMD_ADD){
-            if (buf[2] == HOST_TYPE_WORKER){
-                add_worker(cd);
-                // find a way to do this without using a string
-                write(cd, CONNECTION_ACCEPTED_STR, strlen(CONNECTION_ACCEPTED_STR));
-            }
+        wc = write(STDOUT_FILENO, buf, rc);
+
+        if (wc == -1){
+            perror("Could not write to socket!");
+            exit(1);
         }
     }
-
-    // int fd = open(buf, O_RDONLY);
-    // read(fd, buf, MAX_BUF_SIZE);
-    // write(cd, buf, strlen(buf));
-    // printf("MESSAGE FROM CLIENT: %s\n", buf);
-}
-
-void* cmdListener(void* params) {
-    parameters_t p = *((parameters_t*)params);
-    printf("Test thread, cd: %d\n", p.connectionDescriptor);
-
 
     free(params);
 
@@ -97,9 +80,9 @@ int main() {
 
             memset(params, 0, sizeof(*params));
 
-            params->connectionDescriptor = accept(sd, NULL, NULL);
+            params->cd = accept(sd, NULL, NULL);
 
-            if (params->connectionDescriptor == -1) {
+            if (params->cd == -1) {
                 perror("Could not accept connection!");
                 free(params);
             } else {

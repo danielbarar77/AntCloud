@@ -1,3 +1,5 @@
+#define CLIENT_GREETING "client\n"
+#define WORKER_GREETING "worker\n"
 #define CONNECTION_ACCEPTED_STR "Connection accepted!"
 #define MAX_BUF_SIZE 1000
 

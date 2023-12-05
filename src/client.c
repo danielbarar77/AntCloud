@@ -5,11 +5,13 @@
 #include <arpa/inet.h>
 #include <string.h>
 #include <fcntl.h>
+#include <unistd.h>
 
+#include "common.h"
 
 int main() {
     int sd, cd;
-    char buf[1000] = "", buf1[1000] = "";
+    char buf[1000] = "";
     struct sockaddr_in ser;
 
     // Create a socket
@@ -24,6 +26,7 @@ int main() {
 
     // Connect to the server
     connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+    write(sd, CLIENT_GREETING, sizeof(CLIENT_GREETING));
 
     for (;;) {
         printf("ENTER THE MESSAGE: ");
