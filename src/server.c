@@ -14,13 +14,13 @@
 #define MAX_NR_THREADS 10
 
 struct parameters{
-    int cd // connection descriptor
+    int cd; // connection descriptor;
 };
 
 typedef struct parameters parameters_t;
 
-void* cmdListener(parameters_t* params) {
-    printf("Test thread, cd: %d\n", params->cd);
+void* client_routine(parameters_t *params){
+    printf("Client thread, cd: %d, tid: %d\n", params->cd, pthread_self());
     char buf[MAX_BUF_SIZE];
     int rc = 0, wc = 0;
 
@@ -30,7 +30,33 @@ void* cmdListener(parameters_t* params) {
         if (rc == -1){
             perror("Could not read from socket!");
             exit(1);
+        } 
+
+        wc = write(STDOUT_FILENO, buf, rc);
+
+        if (wc == -1){
+            perror("Could not write to socket!");
+            exit(1);
         }
+    }
+
+    free(params);
+
+    return NULL;
+}
+
+void* worker_routine(parameters_t *params){
+    printf("Worker thread, cd: %d, tid: %d\n", params->cd, pthread_self());
+    char buf[MAX_BUF_SIZE];
+    int rc = 0, wc = 0;
+
+    while(1){
+        rc = read(params->cd, buf, MAX_BUF_SIZE);
+
+        if (rc == -1){
+            perror("Could not read from socket!");
+            exit(1);
+        } 
 
         wc = write(STDOUT_FILENO, buf, rc);
 
@@ -85,15 +111,39 @@ int main() {
             if (params->cd == -1) {
                 perror("Could not accept connection!");
                 free(params);
-            } else {
-                int errorCode = pthread_create(&(threads[nrOfThreads]), NULL, cmdListener, (void *) params);
+            } else { // Create thread
 
-                if (errorCode != 0){
-                    perror("Error creating thread!\n");
+                int rc = read(params->cd, buf, MAX_BUF_SIZE);   // Read entity greeting
+
+                if (rc == -1 || rc == 0) {
+                    perror("Error reading greeting!");
                     exit(1);
                 }
 
-                nrOfThreads++;
+                int errorCode = -1;
+                int isValidEntity = 1;
+                if (strcmp(buf, CLIENT_GREETING) == 0) {
+                    errorCode = pthread_create(&(threads[nrOfThreads]), NULL, client_routine, (void *) params); // Make client routine thread
+                } else if (strcmp(buf, WORKER_GREETING) == 0) {
+                    errorCode = pthread_create(&(threads[nrOfThreads]), NULL, worker_routine, (void *) params);  // Make worker routine thread
+                } else {
+                    isValidEntity = 0;
+                }
+
+                if (isValidEntity == 0){
+                    printf("Invalid entity type!\n");
+                    memset(params, 0, sizeof(*params));
+                    free(params);
+                } else {
+                    if (errorCode != 0){
+                        perror("Error creating thread!\n");
+                        memset(params, 0, sizeof(*params));
+                        free(params);
+                    } else {
+                        nrOfThreads++;
+                    }
+                }
+
             }
        
         }
