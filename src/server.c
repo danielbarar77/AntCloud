@@ -10,6 +10,8 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "done.h"
+#include "todo.h"
 
 #define MAX_NR_THREADS 10
 
@@ -26,24 +28,39 @@ void *client_routine(parameters_t *params)
 	char buf[MAX_BUF_SIZE];
 	int rc = 0, wc = 0;
 
-	while (1)
-	{
-		rc = read(params->cd, buf, MAX_BUF_SIZE);
+    todo_info_t dummyTodo;
+    memset(&dummyTodo, 0, sizeof(dummyTodo));
+    dummyTodo.client_tid = pthread_self();
+    strcpy(dummyTodo.code, "test_code");
 
-		if (rc == -1)
-		{
-			perror("Could not read from socket!");
-			exit(1);
-		}
+    /// ? nu-s sigur de codul asta daca e safe
+    while(push_todo(dummyTodo) == -1){
+        printf("Retrying to push the task\n");
+        sleep(1);
+    }
 
-		wc = write(STDOUT_FILENO, buf, rc);
+    sem_post(&sem_todo);
+    ///
 
-		if (wc == -1)
-		{
-			perror("Could not write to socket!");
-			exit(1);
-		}
-	}
+    int waitForExec = 1;
+
+    // TODO: think of a better way to do this
+    while(waitForExec){
+        pthread_mutex_lock(&mtx_done);
+
+        done_info_t doneInfo;
+        memset(&doneInfo, 0, sizeof(doneInfo));
+
+        int tryRet = try_pop_done(pthread_self(), &doneInfo);
+
+        if (tryRet == 1) {
+            printf("Executable finished with return value: %d\n", doneInfo.return_value);
+        }
+
+        pthread_mutex_unlock(&mtx_done);
+    }
+
+
 
 	free(params);
 
@@ -56,24 +73,30 @@ void *worker_routine(parameters_t *params)
 	char buf[MAX_BUF_SIZE];
 	int rc = 0, wc = 0;
 
-	while (1)
-	{
-		rc = read(params->cd, buf, MAX_BUF_SIZE);
+    /// ? nu-s sigur de codul asta daca e safe
+    
+    sem_wait(&sem_todo);
+    todo_info_t todo;
+    int popValue = pop_todo(&todo);
+    if (popValue == 0){
+        // run executable
 
-		if (rc == -1)
-		{
-			perror("Could not read from socket!");
-			exit(1);
-		}
+        done_info_t done;
+        memset(&done, 0, sizeof(done));
+        done.client_tid = todo.client_tid;
+        done.return_value = 5;
 
-		wc = write(STDOUT_FILENO, buf, rc);
+        pthread_mutex_lock(&mtx_done);
+        while( push_done(done) == -1) {
+            pthread_mutex_unlock(&mtx_done);
+            printf("Retrying to push the task results...\n");
+            sleep(1);
+            pthread_mutex_lock(&mtx_done);
+        }
+        
+    }
+    
 
-		if (wc == -1)
-		{
-			perror("Could not write to socket!");
-			exit(1);
-		}
-	}
 
 	free(params);
 
@@ -86,8 +109,10 @@ int main()
 	char buf[MAX_BUF_SIZE] = "", fname[10];
 	struct sockaddr_in ser;
 
-	pthread_t threads[MAX_NR_THREADS];
-	int nrOfThreads = 0;
+    pthread_t threads[MAX_NR_THREADS];
+    int nrOfThreads = 0;
+
+    sem_init(&sem_todo, 0, 0);
 
 	// Create a socket
 	sd = socket(AF_INET, SOCK_STREAM, 0);

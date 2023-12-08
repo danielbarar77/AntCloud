@@ -5,8 +5,9 @@ all: build/client build/server build/worker
 build/client: src/client.c src/base64.c
 	@echo "Linking client executable"
 	gcc $(CFLAGS) $^ -o $@ -g
+	gcc $(CFLAGS) $^ -o $@ -g
 
-build/server: src/server.c
+build/server: src/server.c src/done.c src/todo.c
 	@echo "Linking server executable"
 	gcc $(CFLAGS) $^ -o $@ -lpthread -g
 

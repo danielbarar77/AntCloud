@@ -3,25 +3,6 @@
 #define CONNECTION_ACCEPTED_STR "Connection accepted!"
 #define END_TRANSMISSION_SIGNAL "END_TRANSMISSION"
 #define MAX_BUF_SIZE 1000
-
-typedef enum MSG_TYPE
-{
-    MSG_TYPE_COMMAND,
-    MSG_TYPE_INFO
-};
-
-typedef enum CMD_TYPE
-{
-    CMD_ADD
-};
-
-typedef enum HOST_TYPE
-{
-    HOST_TYPE_WORKER,
-    HOST_TYPE_CLIENT
-};
-
-typedef enum INFO_CODES
-{
-    INFO_CONNECTION_ACCEPTED
-};
+#define MAX_CODE_SIZE 1000
+#define MAX_WORKER_NR 10
+#define MAX_CLIENT_NR 10
