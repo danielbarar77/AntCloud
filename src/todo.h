@@ -17,6 +17,7 @@ struct todo_info {
 typedef struct todo_info todo_info_t;
 
 extern sem_t sem_todo;
+extern pthread_mutex_t mtx_todo;
 extern todo_info_t todo_queue[MAX_TODO_NR];
 
 int push_todo(todo_info_t todo);

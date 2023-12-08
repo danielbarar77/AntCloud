@@ -44,19 +44,17 @@ void *client_routine(parameters_t *params)
 
     // TODO: think of a better way to do this
     while(waitForExec){
-        pthread_mutex_lock(&mtx_done);
 
         done_info_t doneInfo;
         memset(&doneInfo, 0, sizeof(doneInfo));
 
         int tryRet = try_pop_done(pthread_self(), &doneInfo);
 
-        if (tryRet == 1) {
+        if (tryRet == 0) {
             printf("Executable finished with return value: %d\n", doneInfo.return_value);
             waitForExec = 0;
         }
 
-        pthread_mutex_unlock(&mtx_done);
         sleep(1);
     }
 
@@ -83,17 +81,13 @@ void *worker_routine(parameters_t *params)
         done.client_tid = todo.client_tid;
         done.return_value = 5;
 
-        pthread_mutex_lock(&mtx_done);
         while( push_done(done) == -1) {
-            pthread_mutex_unlock(&mtx_done);
             printf("Retrying to push the task results...\n");
             sleep(1);
-            pthread_mutex_lock(&mtx_done);
         }
         
+        printf("pushed the task result...\n");
     }
-    
-
 
 	free(params);
 
