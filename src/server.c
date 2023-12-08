@@ -38,8 +38,6 @@ void *client_routine(parameters_t *params)
         printf("Retrying to push the task\n");
         sleep(1);
     }
-
-    sem_post(&sem_todo);
     ///
 
     int waitForExec = 1;
@@ -55,9 +53,11 @@ void *client_routine(parameters_t *params)
 
         if (tryRet == 1) {
             printf("Executable finished with return value: %d\n", doneInfo.return_value);
+            waitForExec = 0;
         }
 
         pthread_mutex_unlock(&mtx_done);
+        sleep(1);
     }
 
 
@@ -74,13 +74,10 @@ void *worker_routine(parameters_t *params)
 	int rc = 0, wc = 0;
 
     /// ? nu-s sigur de codul asta daca e safe
-    
-    sem_wait(&sem_todo);
     todo_info_t todo;
-    int popValue = pop_todo(&todo);
+    int popValue = pop_todo(&todo); // waits on semaphore
     if (popValue == 0){
         // run executable
-
         done_info_t done;
         memset(&done, 0, sizeof(done));
         done.client_tid = todo.client_tid;
@@ -124,8 +121,19 @@ int main()
 	ser.sin_port = htons(1101);
 	inet_aton("localhost", &ser.sin_addr);
 
-	int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
-	printf("BIND VALUE: %d\n", b);
+    int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
+
+    while( b == -1 ){
+        perror("Error binding to socket");
+        printf("BIND VALUE: %d\n", b);
+        printf("Retrying to bind to socket...\n");
+        sleep(1);
+        b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
+    }
+
+    printf("BIND VALUE: %d\n", b);
+    printf("Binding successful!\n");
+
 
 	listen(sd, 5);
 
