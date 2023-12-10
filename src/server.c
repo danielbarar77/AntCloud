@@ -9,6 +9,8 @@
 #include <pthread.h>
 #include <unistd.h>
 
+#include <string.h>
+
 #include "common.h"
 #include "done.h"
 #include "todo.h"
@@ -22,28 +24,18 @@ struct parameters
 
 typedef struct parameters parameters_t;
 
-void* client_routine(parameters_t *params){
-    printf("Client thread, cd: %d, tid: %lu\n", params->cd, pthread_self());
-    char buf[MAX_BUF_SIZE];
-    int rc = 0, wc = 0;
+int cmd_client_run(char program[MAX_PROGRAM_SIZE]) {
+    todo_info_t todo;
+    memset(&todo, 0, sizeof(todo));
+    todo.client_tid = pthread_self();
+    strcpy(todo.program, program);
 
-    todo_info_t dummyTodo;
-    memset(&dummyTodo, 0, sizeof(dummyTodo));
-    dummyTodo.client_tid = pthread_self();
-    strcpy(dummyTodo.code, "test_code");
-
-    /// ? nu-s sigur de codul asta daca e safe
-    while(push_todo(dummyTodo) == -1){
+    while(push_todo(todo) == -1){
         printf("Retrying to push the task\n");
         sleep(1);
     }
-    ///
 
-    int waitForExec = 1;
-
-    // TODO: think of a better way to do this
-    while(waitForExec){
-
+    while(1){
         done_info_t doneInfo;
         memset(&doneInfo, 0, sizeof(doneInfo));
 
@@ -51,12 +43,36 @@ void* client_routine(parameters_t *params){
 
         if (tryRet == 0) {
             printf("Executable finished with return value: %d\n", doneInfo.return_value);
-            waitForExec = 0;
+            return doneInfo.return_value;
         }
 
         sleep(1);
     }
+}
 
+void* client_routine(parameters_t *params){
+    char buf[MAX_BUF_SIZE];
+    int rc = 0, wc = 0;
+    int cd = params->cd;
+    int isRunning = 1;
+
+    printf("Client thread, cd: %d, tid: %lu\n", cd, pthread_self());
+
+    while(isRunning){
+        rc = read(cd, buf, MAX_BUF_SIZE);
+        if (rc == -1){
+            printf("Client tid: %lu, cd: %d", pthread_self(), cd);
+            perror("Couldn't read from socket");
+        } else {
+            //;
+            if( strstr(buf, CMD_RUN) != NULL ) {
+                char *program = buf + sizeof(CMD_RUN);
+                int result = cmd_client_run(program);
+            }
+            //char program[MAX_PROGRAM_SIZE];
+            
+        }
+    }
 
 
 	free(params);

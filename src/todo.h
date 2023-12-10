@@ -11,7 +11,7 @@
 
 struct todo_info {
     pthread_t client_tid;
-    char code[MAX_CODE_SIZE];
+    char program[MAX_PROGRAM_SIZE]; // executable and arguments
 };
 
 typedef struct todo_info todo_info_t;
