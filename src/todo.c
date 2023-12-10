@@ -24,7 +24,7 @@ int push_todo(todo_info_t todo) {
 /// This functioon blocks on semaphore wait
 int pop_todo(todo_info_t* todo_out) {
 	sem_wait(&sem_todo);
-	pthread_mutex_unlock(&mtx_todo);
+	pthread_mutex_lock(&mtx_todo);
 	if ( todo_index == -1 ){
 		printf("Todo queue is empty!\n");
 		pthread_mutex_unlock(&mtx_todo);
@@ -32,7 +32,7 @@ int pop_todo(todo_info_t* todo_out) {
 	}
 
 	*todo_out = todo_queue[todo_index--];
-	pthread_mutex_lock(&mtx_todo);
+	pthread_mutex_unlock(&mtx_todo);
 
 	return 0;
 }
