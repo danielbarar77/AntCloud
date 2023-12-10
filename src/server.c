@@ -68,7 +68,7 @@ void* client_routine(parameters_t *params){
         } else {
             //;
             if( strstr(buf, CMD_RUN) != NULL ) {
-                char *program = buf + sizeof(CMD_RUN);
+                char *program = buf + sizeof(CMD_RUN) + 1;
                 char output[MAX_OUTPUT_SIZE];
                 
                 cmd_client_run(program, output);
@@ -125,7 +125,7 @@ void* worker_routine(parameters_t *params){
             } else {
 
                 if (strstr(buf, CMD_RETURN)){
-                    char *output = buf + sizeof(CMD_RETURN);
+                    char *output = buf + sizeof(CMD_RETURN) + 1;
                     
                     done_info_t done;
                     memset(&done, 0, sizeof(done));
