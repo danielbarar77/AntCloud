@@ -61,8 +61,8 @@ void* client_routine(parameters_t *params){
     while(isRunning){
         rc = read(cd, buf, MAX_BUF_SIZE);
         if (rc == -1){
-            printf("Client tid: %lu, cd: %d", pthread_self(), cd);
-            perror("Couldn't read from socket");
+            printf("In client tid: %lu ", pthread_self());
+            perror("couldn't read from socket");
         } else {
             //;
             if( strstr(buf, CMD_RUN) != NULL ) {
