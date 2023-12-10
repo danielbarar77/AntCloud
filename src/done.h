@@ -2,11 +2,12 @@
 #define DONE_H
 
 #include <pthread.h>
+#include "common.h"
 #define MAX_DONE_NR 10
 
 struct done_info {
     pthread_t client_tid;
-    int return_value;
+    char output[MAX_OUTPUT_SIZE];
 };
 
 typedef struct done_info done_info_t;

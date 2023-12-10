@@ -24,7 +24,7 @@ struct parameters
 
 typedef struct parameters parameters_t;
 
-int cmd_client_run(char program[MAX_PROGRAM_SIZE]) {
+void cmd_client_run(char program[MAX_PROGRAM_SIZE], char output[MAX_OUTPUT_SIZE]) {
     todo_info_t todo;
     memset(&todo, 0, sizeof(todo));
     todo.client_tid = pthread_self();
@@ -42,12 +42,14 @@ int cmd_client_run(char program[MAX_PROGRAM_SIZE]) {
         int tryRet = try_pop_done(pthread_self(), &doneInfo);
 
         if (tryRet == 0) {
-            printf("Executable finished with return value: %d\n", doneInfo.return_value);
-            return doneInfo.return_value;
+            printf("Executable finished with return value: %s\n", doneInfo.output);
+            return 0;
         }
 
         sleep(1);
     }
+
+    return 0;
 }
 
 void* client_routine(parameters_t *params){
@@ -67,11 +69,13 @@ void* client_routine(parameters_t *params){
             //;
             if( strstr(buf, CMD_RUN) != NULL ) {
                 char *program = buf + sizeof(CMD_RUN);
-                int result = cmd_client_run(program);
+                char output[MAX_OUTPUT_SIZE];
+                
+                cmd_client_run(program, output);
 
                 memset(buf, 0, MAX_BUF_SIZE);
                 sprintf(buf, CMD_RETURN);
-                sprintf(buf, " %d", result);
+                sprintf(buf, " %s", output);
                 wc = write(cd, buf, strlen(buf)); // send back result to client
 
                 if ( wc == -1 ){
@@ -91,26 +95,56 @@ void* client_routine(parameters_t *params){
 }
 
 void* worker_routine(parameters_t *params){
-    printf("Worker thread, cd: %d, tid: %lu\n", params->cd, pthread_self());
+    
+    int cd = params->cd;
     char buf[MAX_BUF_SIZE];
     int rc = 0, wc = 0;
+
+    printf("Worker thread, cd: %d, tid: %lu\n", cd, pthread_self());
 
     /// ? nu-s sigur de codul asta daca e safe
     todo_info_t todo;
     int popValue = pop_todo(&todo); // waits on semaphore
     if (popValue == 0){
         // run executable
-        done_info_t done;
-        memset(&done, 0, sizeof(done));
-        done.client_tid = todo.client_tid;
-        done.return_value = 5;
+        memset(buf, 0, sizeof(MAX_BUF_SIZE));
+        sprintf(buf, CMD_RUN);
+        sprintf(buf, " %s", todo.program);
+        wc = write(cd, buf, strlen(buf)); // send program to worker
 
-        while( push_done(done) == -1) {
-            printf("Retrying to push the task results...\n");
-            sleep(1);
+        if ( wc == -1 ) {
+            printf("In worker tid: %lu ", pthread_self());
+            perror(" error sending program to worker");
+        } else {
+            memset(buf, 0, sizeof(MAX_BUF_SIZE));
+            rc = read(cd, buf, MAX_BUF_SIZE); // get return value from worker
+
+            if (rc == -1) {
+                printf("In worker tid: %lu ", pthread_self());
+                perror(" error receiving program result from worker");
+            } else {
+
+                if (strstr(buf, CMD_RETURN)){
+                    char *output = buf + sizeof(CMD_RETURN);
+                    
+                    done_info_t done;
+                    memset(&done, 0, sizeof(done));
+                    done.client_tid = todo.client_tid;
+                    strcpy(done.output, output);
+
+                    while( push_done(done) == -1 ) {
+                        printf("Retrying to push the task results...\n");
+                        sleep(1);
+                    }
+                    
+                    printf("pushed the task result...\n");
+                }
+
+
+            }
+
         }
-        
-        printf("pushed the task result...\n");
+
     }
 
 	free(params);
