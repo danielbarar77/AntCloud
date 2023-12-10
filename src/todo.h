@@ -10,7 +10,7 @@
 #define MAX_TODO_NR 10
 
 struct todo_info {
-    int client_tid;
+    pthread_t client_tid;
     char code[MAX_CODE_SIZE];
 };
 

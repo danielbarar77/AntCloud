@@ -13,13 +13,24 @@ int push_done(done_info_t done) {
 		return -1;
 	}
 
-	done_list[doneIndex++] = done;
+	done_list[++doneIndex] = done;
 	pthread_mutex_unlock(&mtx_done);
 
 	return 0;
 }
 
-int try_pop_done(int client_tid, done_info_t *output) {
+done_info_t pop_done(int index) {
+	done_info_t done = done_list[index];
+
+	for (int i = index; i < doneIndex - 1; i++){
+		done_list[i] = done_list[i+1];
+	}
+	doneIndex--;
+
+	return done;
+}
+
+int try_pop_done(pthread_t client_tid, done_info_t *output) {
 	pthread_mutex_lock(&mtx_done);
 	if ( doneIndex == -1){
 		printf("Cannot pop: the done list is empty!\n");
@@ -27,8 +38,16 @@ int try_pop_done(int client_tid, done_info_t *output) {
 		return -1;
 	}
 
-	*output = done_list[doneIndex--]; // TODO: modify this to compare client tid
-	pthread_mutex_unlock(&mtx_done);
+	for (int i = 0; i <= doneIndex; i++){ // TODO: fix - it doesn't find the client's executable
+		if (done_list[i].client_tid == client_tid){
+			*output = pop_done(i);
+			pthread_mutex_unlock(&mtx_done);
+			return 0;
+		}
+	}
+	
 
-	return 0;
+	printf("Cannot pop: client %d executable has not finished yet!\n", client_tid);
+	pthread_mutex_unlock(&mtx_done);
+	return -1;
 }

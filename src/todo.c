@@ -4,7 +4,7 @@
 sem_t sem_todo;
 pthread_mutex_t mtx_todo = PTHREAD_MUTEX_INITIALIZER;
 todo_info_t todo_queue[MAX_TODO_NR] = {0};
-int todo_index = 0;
+int todo_index = -1;
 
 int push_todo(todo_info_t todo) {
 	pthread_mutex_lock(&mtx_todo);
@@ -14,7 +14,7 @@ int push_todo(todo_info_t todo) {
 		return -1;
 	}
 
-	todo_queue[todo_index++] = todo;
+	todo_queue[++todo_index] = todo;
 
 	pthread_mutex_unlock(&mtx_todo);
 	sem_post(&sem_todo);

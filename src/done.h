@@ -5,7 +5,7 @@
 #define MAX_DONE_NR 10
 
 struct done_info {
-    int client_tid;
+    pthread_t client_tid;
     int return_value;
 };
 
@@ -15,6 +15,6 @@ extern pthread_mutex_t mtx_done;
 extern done_info_t done_list[MAX_DONE_NR];
 
 int push_done(done_info_t done);
-int try_pop_done(int client_tid, done_info_t *output);
+int try_pop_done(pthread_t client_tid, done_info_t *output);
 
 #endif

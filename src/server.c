@@ -22,11 +22,10 @@ struct parameters
 
 typedef struct parameters parameters_t;
 
-void *client_routine(parameters_t *params)
-{
-	printf("Client thread, cd: %d, tid: %d\n", params->cd, pthread_self());
-	char buf[MAX_BUF_SIZE];
-	int rc = 0, wc = 0;
+void* client_routine(parameters_t *params){
+    printf("Client thread, cd: %d, tid: %lu\n", params->cd, pthread_self());
+    char buf[MAX_BUF_SIZE];
+    int rc = 0, wc = 0;
 
     todo_info_t dummyTodo;
     memset(&dummyTodo, 0, sizeof(dummyTodo));
@@ -65,11 +64,10 @@ void *client_routine(parameters_t *params)
 	return NULL;
 }
 
-void *worker_routine(parameters_t *params)
-{
-	printf("Worker thread, cd: %d, tid: %d\n", params->cd, pthread_self());
-	char buf[MAX_BUF_SIZE];
-	int rc = 0, wc = 0;
+void* worker_routine(parameters_t *params){
+    printf("Worker thread, cd: %d, tid: %lu\n", params->cd, pthread_self());
+    char buf[MAX_BUF_SIZE];
+    int rc = 0, wc = 0;
 
     /// ? nu-s sigur de codul asta daca e safe
     todo_info_t todo;
