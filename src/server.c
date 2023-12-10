@@ -68,6 +68,15 @@ void* client_routine(parameters_t *params){
             if( strstr(buf, CMD_RUN) != NULL ) {
                 char *program = buf + sizeof(CMD_RUN);
                 int result = cmd_client_run(program);
+
+                memset(buf, 0, MAX_BUF_SIZE);
+                sprintf(buf, "return %d", result);
+                wc = write(cd, buf, strlen(buf)); // send back result to client
+
+                if ( wc == -1 ){
+                    printf("In client tid: %lu, ", pthread_self());
+                    perror(" error sending result");
+                }
             }
             //char program[MAX_PROGRAM_SIZE];
             
