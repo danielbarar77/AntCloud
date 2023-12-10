@@ -70,7 +70,8 @@ void* client_routine(parameters_t *params){
                 int result = cmd_client_run(program);
 
                 memset(buf, 0, MAX_BUF_SIZE);
-                sprintf(buf, "return %d", result);
+                sprintf(buf, CMD_RETURN);
+                sprintf(buf, " %d", result);
                 wc = write(cd, buf, strlen(buf)); // send back result to client
 
                 if ( wc == -1 ){

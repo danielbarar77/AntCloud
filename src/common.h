@@ -1,4 +1,5 @@
 #define CMD_RUN "run"
+#define CMD_RETURN "return"
 
 #define CLIENT_GREETING "client\n"
 #define WORKER_GREETING "worker\n"
