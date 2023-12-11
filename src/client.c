@@ -9,6 +9,7 @@
 #include <stdlib.h>
 
 #include "common.h"
+#include "base64.h"
 
 int checkIfExists(char *buf)
 {
@@ -31,9 +32,11 @@ int transferData(char *filename, int sd)
 	}
 
 	char buff[MAX_BUF_SIZE];
+	char *temp = NULL;
 	int wc; // wc = write count
 	int rc; // rc = read count
 
+	memset(buff, 0, MAX_BUF_SIZE);
 	while ((rc = read(fd, buff, MAX_BUF_SIZE)) > 0) // reads from the source file
 	{
 		if (rc == -1)
@@ -44,23 +47,24 @@ int transferData(char *filename, int sd)
 			return -1;
 		}
 
-		// wc = write(sd, buff, rc); // wites to the server
-		wc = send(sd, buff, rc, MSG_DONTWAIT); // wites to the server
+		// strcpy(temp, base64_encode(buff));
+		temp = base64_encode(buff);
+		wc = write(sd, temp, strlen(temp)); // wites to the server
+		free(temp);
 
 		if (wc == -1)
 		{
 			perror("Writing");
 			close(fd);
-			free(buff);
 			return -1;
 		}
 		if (wc < rc)
 		{
 			printf("Unable to write all the data through the socket!\n");
 			close(fd);
-			free(buff);
 			return 11;
 		}
+		memset(buff, 0, MAX_BUF_SIZE);
 	}
 
 	// close the file descriptor of the source file
@@ -82,6 +86,7 @@ int transferData(char *filename, int sd)
 void reciveData(int sd)
 {
 	char buff[MAX_BUF_SIZE];
+	char *temp = NULL;
 	int rc, wc;
 	char *end;
 
@@ -97,14 +102,13 @@ void reciveData(int sd)
 		end = strstr(buff, "END_TRANSMISSION");
 		if (end != NULL)
 			memset(end, 0, sizeof("END_TRANSMISSION"));
+
+		temp = base64_decode(buff);
 		// writes to the terminal the output
-		wc = write(STDOUT_FILENO, buff, rc);
+		wc = write(STDOUT_FILENO, temp, strlen(temp));
+		free(temp);
 		printf("\n");
-		if (wc < rc)
-		{
-			printf("Not all of it was written!\n");
-			exit(-1);
-		}
+
 		if (wc == -1)
 		{
 			perror("Writing to terminal");

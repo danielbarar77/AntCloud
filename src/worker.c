@@ -9,10 +9,12 @@
 #include <unistd.h>
 
 #include "common.h"
+#include "base64.h"
 
 void reciveData(int cd)
 {
 	char buff[MAX_BUF_SIZE];
+	char *temp;
 	int rc, wc;
 	// opens or create the file in which the recived data will be stored
 	int fd = open("../temp/source.c", O_WRONLY | O_CREAT | O_TRUNC, 0644);
@@ -23,26 +25,24 @@ void reciveData(int cd)
 	// reads from the socket
 	while ((rc = read(cd, buff, MAX_BUF_SIZE)) > 0)
 	{
-		printf("buff: %s\n", buff);
 		if (rc == -1)
 		{
 			perror("Reading from the server");
 			exit(-1);
 		}
 		// checks if the transmission was ended
+
 		end = strstr(buff, "END_TRANSMISSION");
 
 		// memmove(buff, buff, buff - end);
 		if (end != NULL)
 			memset(end, 0, sizeof("END_TRANSMISSION"));
 
+		temp = base64_decode(buff);
 		// writes the data in the file
-		wc = write(fd, buff, rc);
-		if (wc < rc)
-		{
-			printf("Couldn't write all the data in source.c!\n");
-			exit(-1);
-		}
+		wc = write(fd, temp, strlen(temp));
+		free(temp);
+
 		if (wc == -1)
 		{
 			perror("Writing in source.c");
@@ -133,6 +133,7 @@ void transferData(int cd)
 {
 	int rc, wc;
 	char buff[MAX_BUF_SIZE];
+	char *temp;
 	// opens the output.txt for read
 	int fd = open("../temp/output.txt", O_RDONLY);
 	if (fd == -1)
@@ -141,25 +142,27 @@ void transferData(int cd)
 		exit(-1);
 	}
 	// reads from the output.txt
+	memset(buff, 0, MAX_BUF_SIZE);
+
 	while ((rc = read(fd, buff, MAX_BUF_SIZE)) > 0)
 	{
+		printf("output.txt: %s\n", buff);
 		if (rc == -1)
 		{
 			perror("Reading from output.txt");
 			exit(-1);
 		}
 		// writes to the server
-		wc = write(cd, buff, rc);
-		if (wc < rc)
-		{
-			printf("Couldn't write all the data to the socket!\n");
-			exit(-1);
-		}
+		temp = base64_encode(buff);
+		wc = write(cd, temp, strlen(temp)); // wites to the server
+		free(temp);
+
 		if (wc == -1)
 		{
 			perror("Writing in socket");
 			exit(-1);
 		}
+		memset(buff, 0, MAX_BUF_SIZE);
 	}
 
 	if (write(cd, "END_TRANSMISSION", strlen("END_TRANSMISSION")) == -1)
@@ -220,6 +223,8 @@ int main()
 	int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
 	while (b == -1)
 	{
+		sleep(0.5);
+		printf("Incearca conexiunea: %d!\n", b);
 		b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
 	}
 	printf("BIND VALUE: %d\n", b);
