@@ -12,6 +12,7 @@
 
 int checkIfExists(char *buf)
 {
+	// checks the existance of the file and if is readable
 	if (access(buf, F_OK | R_OK))
 		return -1;
 
@@ -20,6 +21,7 @@ int checkIfExists(char *buf)
 
 int transferData(char *filename, int sd)
 {
+	// opens the source file that needs to be sent to the sever
 	int fd = open(filename, O_RDONLY);
 
 	if (fd == -1)
@@ -28,21 +30,23 @@ int transferData(char *filename, int sd)
 		return -1;
 	}
 
-	char *buff = (char *)malloc(MAX_BUF_SIZE * sizeof(char));
-	int wc;								   // wc = write count
-	int rc = read(fd, buff, MAX_BUF_SIZE); // rc = read count
-	if (rc == -1)
-	{
-		perror("Reading");
-		close(fd);
-		free(buff);
-		return -1;
-	}
+	char buff[MAX_BUF_SIZE];
+	int wc; // wc = write count
+	int rc; // rc = read count
 
-	while (rc > 0)
+	while ((rc = read(fd, buff, MAX_BUF_SIZE)) > 0) // reads from the source file
 	{
-		wc = write(sd, buff, rc);
-		printf("S-au transferat %d caractere\n", wc);
+		if (rc == -1)
+		{
+			perror("Reading");
+			close(fd);
+			free(buff);
+			return -1;
+		}
+
+		// wc = write(sd, buff, rc); // wites to the server
+		wc = send(sd, buff, rc, MSG_DONTWAIT); // wites to the server
+
 		if (wc == -1)
 		{
 			perror("Writing");
@@ -57,61 +61,74 @@ int transferData(char *filename, int sd)
 			free(buff);
 			return 11;
 		}
-		rc = read(fd, buff, MAX_BUF_SIZE);
-		if (rc == -1)
-		{
-			perror("Reading");
-			close(fd);
-			free(buff);
-			return -1;
-		}
-		if (rc == 0)
-		{
-			break;
-		}
 	}
 
-	free(buff);
+	// close the file descriptor of the source file
 	if (close(fd) == -1)
 	{
 		perror("Closing");
 		return -1;
 	}
 
-	if (shutdown(sd, SHUT_WR) == -1)
+	// writes a message the signals the end of the transmission
+	if (write(sd, "END_TRANSMISSION", strlen("END_TRANSMISSION")) == -1)
 	{
 		perror("Shutdown");
-		return -1;
 	}
 
 	return 0;
 }
 
-int waitForResults(int sd)
+void reciveData(int sd)
 {
-	int value;
-	int rc;
-	while (1)
+	char buff[MAX_BUF_SIZE];
+	int rc, wc;
+	char *end;
+
+	printf("OUTPUT OF THE EXECUTABLE:\n");
+	while ((rc = read(sd, buff, MAX_BUF_SIZE)) > 0) // reads from the server
 	{
-		rc = read(sd, &value, sizeof(int));
 		if (rc == -1)
 		{
-			perror("Reading from socket");
-			return -1;
+			perror("Reading from the server");
+			exit(-1);
 		}
-		if (rc > 0)
+		// checks if the transmission ended
+		end = strstr(buff, "END_TRANSMISSION");
+		if (end != NULL)
+			memset(end, 0, sizeof("END_TRANSMISSION"));
+		// writes to the terminal the output
+		wc = write(STDOUT_FILENO, buff, rc);
+		printf("\n");
+		if (wc < rc)
 		{
-			return value;
+			printf("Not all of it was written!\n");
+			exit(-1);
+		}
+		if (wc == -1)
+		{
+			perror("Writing to terminal");
+			exit(-1);
+		}
+		if (end != NULL)
+		{
+			break;
 		}
 	}
-
-	return -1;
+	if (rc == 0)
+	{
+		printf("End of data transmission from the worker\n");
+	}
+	else
+	{
+		perror("Reading");
+	}
 }
 
 int main()
 {
 	int sd;
-	char buf[1000] = "";
+	char buf[MAX_BUF_SIZE];
 	struct sockaddr_in ser;
 
 	// Create a socket
@@ -130,22 +147,16 @@ int main()
 	for (;;)
 	{
 		printf("ENTER THE EXECUTABLE: \n");
-		scanf("%s", buf);
+		scanf("%s", buf);			 // reads the filepath
 		if (checkIfExists(buf) == 0) // checks the existance of the file
 		{
 			if (transferData(buf, sd) == 0) // transfers the executable to the server
 			{
-				printf("SUCCESS TRANSFER OF DATA!\n");
+				printf("S-a tranferat catre worker!\n");
+				printf("SUCCESS TRANSFER OF DATA TO THE SERVER!\n");
 				printf("WAITING FOR THE RESULTS...\n");
-				int result = waitForResults(sd);
-				if (result == -1)
-				{
-					printf("ERROR WHILE RECIVING THE RESULT!\n");
-				}
-				else
-				{
-					printf("The result is: %d\n", result);
-				}
+				reciveData(sd); // get the data from the server
+				printf("\n");
 			}
 			else
 			{
