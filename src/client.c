@@ -75,7 +75,7 @@ int transferData(char *filename, int sd)
 	}
 
 	// writes a message the signals the end of the transmission
-	if (write(sd, "END_TRANSMISSION", strlen("END_TRANSMISSION")) == -1)
+	if (write(sd, END_TRANSMISSION_SIGNAL, sizeof(END_TRANSMISSION_SIGNAL)) == -1)
 	{
 		perror("Shutdown");
 	}
@@ -99,9 +99,9 @@ void reciveData(int sd)
 			exit(-1);
 		}
 		// checks if the transmission ended
-		end = strstr(buff, "END_TRANSMISSION");
+		end = strstr(buff, END_TRANSMISSION_SIGNAL);
 		if (end != NULL)
-			memset(end, 0, sizeof("END_TRANSMISSION"));
+			memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
 
 		temp = base64_decode(buff);
 		// writes to the terminal the output
