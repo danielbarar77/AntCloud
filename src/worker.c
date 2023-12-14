@@ -13,14 +13,14 @@
 
 void reciveData(int cd)
 {
-	char buff[MAX_BUF_SIZE];
+	char *buff = (char *)malloc(MAX_BUF_SIZE * sizeof(char));
 	char *temp;
 	int rc, wc;
 	// opens or create the file in which the recived data will be stored
 	int fd = open("../temp/source.c", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1)
 		perror("Creating source.c file");
-	char *end;
+	char *end, *type;
 
 	// reads from the socket
 	while ((rc = read(cd, buff, MAX_BUF_SIZE)) > 0)
@@ -28,15 +28,21 @@ void reciveData(int cd)
 		if (rc == -1)
 		{
 			perror("Reading from the server");
+			free(buff);
 			exit(-1);
 		}
 		// checks if the transmission was ended
 
 		end = strstr(buff, END_TRANSMISSION_SIGNAL);
-
-		// memmove(buff, buff, buff - end);
 		if (end != NULL)
 			memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
+		// checks the type of the data
+		type = strstr(buff, CMD_RETURN);
+		if (type != NULL)
+		{
+			memset(buff, 0, sizeof(type));
+			buff += sizeof(type);
+		}
 
 		temp = base64_decode(buff);
 		// writes the data in the file
@@ -46,6 +52,7 @@ void reciveData(int cd)
 		if (wc == -1)
 		{
 			perror("Writing in source.c");
+			free(buff);
 			exit(-1);
 		}
 		if (end != NULL)
@@ -55,6 +62,7 @@ void reciveData(int cd)
 
 		memset(buff, 0, MAX_BUF_SIZE);
 	}
+	free(buff);
 
 	if (rc == 0)
 	{
@@ -141,9 +149,22 @@ void transferData(int cd)
 		perror("Reading from output.txt");
 		exit(-1);
 	}
-	// reads from the output.txt
 	memset(buff, 0, MAX_BUF_SIZE);
 
+	// informs the server that I will send a the return value
+	wc = write(cd, CMD_RETURN, sizeof(CMD_RETURN));
+	if (wc == -1)
+	{
+		perror("Writing CMD_RETURN to the server");
+		exit(-1);
+	}
+	else if (wc == 0)
+	{
+		printf("Couldn't send CMD_RETURN to the server!");
+		exit(-1);
+	}
+
+	// reads from the output.txt
 	while ((rc = read(fd, buff, MAX_BUF_SIZE)) > 0)
 	{
 		printf("output.txt: %s\n", buff);

@@ -36,6 +36,19 @@ int transferData(char *filename, int sd)
 	int wc; // wc = write count
 	int rc; // rc = read count
 
+	// informs the server that I will send a file that needs to be run
+	wc = write(sd, CMD_RUN, sizeof(CMD_RUN));
+	if (wc == -1)
+	{
+		perror("Writing CMD_RUN to the server");
+		exit(-1);
+	}
+	else if (wc == 0)
+	{
+		printf("Couldn't send CMD_RUN to the server!");
+		exit(-1);
+	}
+
 	memset(buff, 0, MAX_BUF_SIZE);
 	while ((rc = read(fd, buff, MAX_BUF_SIZE)) > 0) // reads from the source file
 	{
@@ -43,7 +56,6 @@ int transferData(char *filename, int sd)
 		{
 			perror("Reading");
 			close(fd);
-			free(buff);
 			return -1;
 		}
 
@@ -85,10 +97,10 @@ int transferData(char *filename, int sd)
 
 void reciveData(int sd)
 {
-	char buff[MAX_BUF_SIZE];
+	char *buff = (char *)malloc(MAX_BUF_SIZE * sizeof(char));
 	char *temp = NULL;
 	int rc, wc;
-	char *end;
+	char *end, *type;
 
 	printf("OUTPUT OF THE EXECUTABLE:\n");
 	while ((rc = read(sd, buff, MAX_BUF_SIZE)) > 0) // reads from the server
@@ -96,12 +108,20 @@ void reciveData(int sd)
 		if (rc == -1)
 		{
 			perror("Reading from the server");
+			free(buff);
 			exit(-1);
 		}
 		// checks if the transmission ended
 		end = strstr(buff, END_TRANSMISSION_SIGNAL);
 		if (end != NULL)
 			memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
+		// checks the type of the data
+		type = strstr(buff, CMD_RETURN);
+		if (type != NULL)
+		{
+			memset(buff, 0, sizeof(type));
+			buff += sizeof(type);
+		}
 
 		temp = base64_decode(buff);
 		// writes to the terminal the output
@@ -112,13 +132,17 @@ void reciveData(int sd)
 		if (wc == -1)
 		{
 			perror("Writing to terminal");
+			free(buff);
 			exit(-1);
 		}
 		if (end != NULL)
 		{
 			break;
 		}
+		free(buff);
 	}
+	free(buff);
+
 	if (rc == 0)
 	{
 		printf("End of data transmission from the worker\n");
