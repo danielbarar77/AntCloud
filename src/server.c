@@ -13,40 +13,11 @@
 #include <string.h>
 
 #include "common.h"
-#include "done.h"
-#include "todo.h"
+#include "route.h"
 #include "networking.h"
 
-#define MAX_NR_THREADS 5
 #define MAX_EVENTS 10
-
-void cmd_client_run(char program[MAX_PROGRAM_SIZE], char output[MAX_OUTPUT_SIZE]) {
-    todo_info_t todo;
-    memset(&todo, 0, sizeof(todo));
-    todo.client_tid = pthread_self();
-    strcpy(todo.program, program);
-
-    while(push_todo(todo) == -1){
-        printf("Retrying to push the task\n");
-        sleep(1);
-    }
-
-    while(1){
-        done_info_t doneInfo;
-        memset(&doneInfo, 0, sizeof(doneInfo));
-
-        int tryRet = try_pop_done(pthread_self(), &doneInfo);
-
-        if (tryRet == 0) {
-            printf("Executable finished with return value: %s\n", doneInfo.output);
-            return 0;
-        }
-
-        sleep(1);
-    }
-
-    return 0;
-}
+#define SERVER_PORT 1101
 
 int main()
 {
@@ -60,11 +31,6 @@ int main()
 	char buf[MAX_BUF_SIZE] = "", fname[10];
 	struct sockaddr_in ser;
 
-    pthread_t threads[MAX_NR_THREADS];
-    int nrOfThreads = 0;
-
-    sem_init(&sem_todo, 0, 0);
-
 	// Create a socket
 	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
 	if (listen_sock < 0)
@@ -72,7 +38,7 @@ int main()
 
 	bzero(&ser, sizeof(struct sockaddr_in));
 	ser.sin_family = AF_INET;
-	ser.sin_port = htons(1101);
+	ser.sin_port = htons(SERVER_PORT);
 	inet_aton("localhost", &ser.sin_addr);
 
     int b = bind(listen_sock, (struct sockaddr *)&ser, sizeof(ser));
@@ -141,7 +107,7 @@ int main()
                 case HOST_TYPE_WORKER:
                     break;
                 case HOST_TYPE_NULL:
-                    if (events[n].events & EPOLLIN){
+                    if (events[n].events & EPOLLIN) {
                         if ( read(cd, buf, MAX_BUF_SIZE) < 0 ) {
                             perror("read");
                             exit(EXIT_FAILURE);

@@ -7,9 +7,9 @@ build/client: src/client.c src/base64.c
 	gcc $(CFLAGS) $^ -o $@ -g
 	gcc $(CFLAGS) $^ -o $@ -g
 
-build/server: src/server.c src/done.c src/todo.c src/networking.c
+build/server: src/server.c src/route.c src/networking.c
 	@echo "Linking server executable"
-	gcc $(CFLAGS) $^ -o $@ -lpthread -g
+	gcc $(CFLAGS) $^ -o $@ -g
 
 build/worker: src/worker.c src/base64.c
 	@echo "Linking worker executable"
