@@ -11,6 +11,53 @@
 #include "common.h"
 #include "base64.h"
 
+void printHelp()
+{
+	int fd = open("help.txt", O_RDONLY);
+	if (fd == -1)
+	{
+		perror("Opening help.txt");
+		return;
+	}
+	char buf[MAX_BUF_SIZE];
+	int rc, wc;
+	while ((rc = read(fd, buf, MAX_BUF_SIZE)) > 0)
+	{
+		wc = write(STDOUT_FILENO, buf, rc);
+	}
+}
+
+void readCommand()
+{
+	setvbuf(stdout, NULL, _IONBF, 0);
+	char *command = (char *)malloc(128 * sizeof(char));
+
+	printf("		");
+	for (int i = 0; i < 24; i++)
+	{
+		printf("#");
+		usleep(25000);
+	}
+	usleep(75000);
+	printf("\n			  100% 				\n");
+	usleep(125000);
+	printf("\n		****Welcome to Agora****		\n\n");
+
+	while (1)
+	{
+		printf(">");
+		scanf("%s", command);
+		if ((strcmp(command, "?") == 0) || (strcmp(command, "help") == 0) || (strcmp(command, "-h") == 0))
+		{
+			printHelp();
+		}
+		if ((strcmp(command, "exit") == 0) || (strcmp(command, "q") == 0))
+		{
+			exit(0);
+		}
+	}
+}
+
 int checkIfExists(char *buf)
 {
 	// checks the existance of the file and if is readable
@@ -157,6 +204,7 @@ int main()
 {
 	int sd;
 	char buf[MAX_BUF_SIZE];
+	char *command = (char *)malloc(128 * sizeof(command));
 	struct sockaddr_in ser;
 
 	// Create a socket
@@ -174,8 +222,9 @@ int main()
 	// write(sd, CLIENT_GREETING, sizeof(CLIENT_GREETING));
 	for (;;)
 	{
+		readCommand();
+		scanf("%s", buf); // reads the filepath
 		printf("ENTER THE EXECUTABLE: \n");
-		scanf("%s", buf);			 // reads the filepath
 		if (checkIfExists(buf) == 0) // checks the existance of the file
 		{
 			if (transferData(buf, sd) == 0) // transfers the executable to the server

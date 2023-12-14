@@ -229,6 +229,7 @@ int main()
 	int sd, cd;
 	char buf[MAX_BUF_SIZE] = "";
 	struct sockaddr_in ser;
+	setvbuf(stdout, NULL, _IONBF, 0);
 
 	// Create a socket
 	sd = socket(AF_INET, SOCK_STREAM, 0);

@@ -1,0 +1,21 @@
+AGORA
+
+NAME
+	agora - distributed processing application
+
+SYNOPSIS
+	./agora [COMMAND]... [FILE]...
+
+DESCRIPTION
+	Sends a source file to a server that compiles and executes with the help of workstations.
+
+COMMANDS
+	? help -h 
+		Output a usage message and exit.
+
+	run
+		Upload a source file to the server.
+
+	exit q
+		Exit the program.
+
