@@ -1,6 +1,7 @@
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
+#include <sys/epoll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
@@ -19,12 +20,22 @@
 #define MAX_EVENTS 10
 #define MAX_CONNECTION_QUEUE 5
 
+#define MAX_HOST_NR 20
+
+enum HOST_TYPE{
+    HOST_TYPE_NULL,
+    HOST_TYPE_WORKER,
+    HOST_TYPE_CLIENT
+};
+
 struct parameters
 {
 	int cd; // connection descriptor;
 };
 
 typedef struct parameters parameters_t;
+typedef enum HOST_TYPE host_type_t;
+
 
 void cmd_client_run(char program[MAX_PROGRAM_SIZE], char output[MAX_OUTPUT_SIZE]) {
     todo_info_t todo;
@@ -56,8 +67,12 @@ void cmd_client_run(char program[MAX_PROGRAM_SIZE], char output[MAX_OUTPUT_SIZE]
 
 int main()
 {
+    host_type_t hosts[MAX_HOST_NR]; // hosts[socket_conn] = type of the host connected on the socket
+    memset(hosts, HOST_TYPE_NULL, sizeof(hosts) * MAX_HOST_NR);
+
     struct epoll_event ev, events[MAX_EVENTS];
     int listen_sock, conn_sock, nfds, epollfd;
+    int hostCount = 0;
 
 	char buf[MAX_BUF_SIZE] = "", fname[10];
 	struct sockaddr_in ser;
@@ -87,8 +102,7 @@ int main()
         b = bind(listen_sock, (struct sockaddr *)&ser, sizeof(ser));
     }
 
-    printf("BIND VALUE: %d\n", b);
-    printf("Binding successful!\n");
+    printf("Binding successful on socket: %d!\n", listen_sock);
 
 	listen(listen_sock, MAX_CONNECTION_QUEUE);
 
@@ -113,22 +127,52 @@ int main()
             exit(EXIT_FAILURE);
         }
 
-        for (n = 0; n < nfds; ++n) {
+        for (int n = 0; n < nfds; ++n) {
             if (events[n].data.fd == listen_sock) { // accept new connections on listen socket
-                conn_sock = accept(listen_sock, (struct sockaddr *) &addr, &addrlen);
+                conn_sock = accept(listen_sock, NULL, NULL);
                 if (conn_sock == -1) {
                     perror("accept");
                     exit(EXIT_FAILURE);
                 }
-                setnonblocking(conn_sock);
-                ev.events = EPOLLIN | EPOLLET;
-                ev.data.fd = conn_sock;
-                if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &ev) == -1) {
-                    perror("epoll_ctl: conn_sock");
-                    exit(EXIT_FAILURE);
+                if (hostCount < MAX_HOST_NR) {
+                    printf("Connection accepted: %d\n", conn_sock);
+                    fcntl(conn_sock, F_SETFL, fcntl(conn_sock, F_GETFL) | O_NONBLOCK); // set nonblocking
+                    ev.events = EPOLLIN | EPOLLET;
+                    ev.data.fd = conn_sock;
+                    if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &ev) == -1) {
+                        perror("epoll_ctl: conn_sock");
+                        exit(EXIT_FAILURE);
+                    }
+                    hostCount++;
+                } else {
+                    printf("Maximum number of hosts reached!\n");
                 }
             } else { // handle event
-                
+                int cd = events[n].data.fd;
+                switch(hosts[cd]){
+                case HOST_TYPE_CLIENT:
+                    break;
+                case HOST_TYPE_WORKER:
+                    break;
+                case HOST_TYPE_NULL:
+                    if (events[n].events & EPOLLIN){
+                        read(cd, buf, MAX_BUF_SIZE);
+
+                        if(strcmp(buf, CLIENT_GREETING) == 0){
+                            printf("Added new client: %d\n", cd);
+                            hosts[cd] = HOST_TYPE_CLIENT;
+                        } else if (strcmp(buf, WORKER_GREETING) == 0){
+                            printf("Added new worker: %d\n", cd);
+                            hosts[cd] = HOST_TYPE_WORKER;
+                        } else {
+                            printf("%d: Invalid greeting!\n", cd);
+                        }
+                    }
+                    break;
+                default:
+                    printf("Invalid host type for socket: %lu\n", cd);
+                    break;
+                }
             }
         }
 	}

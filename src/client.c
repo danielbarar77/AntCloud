@@ -147,31 +147,7 @@ int main()
 
 	// Connect to the server
 	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
-	// write(sd, CLIENT_GREETING, sizeof(CLIENT_GREETING));
-	for (;;)
-	{
-		printf("ENTER THE EXECUTABLE: \n");
-		scanf("%s", buf);			 // reads the filepath
-		if (checkIfExists(buf) == 0) // checks the existance of the file
-		{
-			if (transferData(buf, sd) == 0) // transfers the executable to the server
-			{
-				printf("S-a tranferat catre worker!\n");
-				printf("SUCCESS TRANSFER OF DATA TO THE SERVER!\n");
-				printf("WAITING FOR THE RESULTS...\n");
-				reciveData(sd); // get the data from the server
-				printf("\n");
-			}
-			else
-			{
-				printf("ERROR!");
-			}
-		}
-		else
-		{
-			printf("INVALID FILE OR CANNOT READ FROM IT!\n");
-		}
-	}
+	write(sd, CLIENT_GREETING, sizeof(CLIENT_GREETING));
 
 	close(sd);
 

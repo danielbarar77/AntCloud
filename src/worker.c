@@ -219,53 +219,16 @@ int main()
 	ser.sin_port = htons(1101);
 	inet_aton("localhost", &ser.sin_addr);
 
-	//////////////////////// for testing
-	int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
-	while (b == -1)
-	{
-		sleep(0.5);
-		printf("Incearca conexiunea: %d!\n", b);
-		b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
-	}
-	printf("BIND VALUE: %d\n", b);
-	if (b == -1)
-	{
-		perror("BIND");
-		exit(-1);
-	}
-	listen(sd, 5);
-	printf("Connecting to client...\n");
-
-	while (1)
-	{
-		cd = accept(sd, NULL, NULL);
-		if (cd == -1)
-		{
-			printf("Coudn't accept connection!\n");
-			return -1;
-		}
-		else
-		{
-			printf("Connection successful!\n");
-		}
-		reciveData(cd);
-		compile();
-		runExecutable();
-		transferData(cd);
-		removeFiles();
-	}
-	////////////////////////
-
 	// Connect to the server
-	// printf("Connecting to server...\n");
-	// connect(sd, (struct sockaddr *)&ser, sizeof(ser));
-	// printf("Connection successful!\n");
+	printf("Connecting to server...\n");
+	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	printf("Connection successful!\n");
 
 	// Greet the server
-	// printf("Greeting server...\n");
-	// write(sd, WORKER_GREETING, sizeof(WORKER_GREETING));
+	printf("Greeting server...\n");
+	write(sd, WORKER_GREETING, sizeof(WORKER_GREETING));
 
-	// close(sd);
+	close(sd);
 
 	return 0;
 }
