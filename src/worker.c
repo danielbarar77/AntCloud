@@ -32,11 +32,11 @@ void reciveData(int cd)
 		}
 		// checks if the transmission was ended
 
-		end = strstr(buff, "END_TRANSMISSION");
+		end = strstr(buff, END_TRANSMISSION_SIGNAL);
 
 		// memmove(buff, buff, buff - end);
 		if (end != NULL)
-			memset(end, 0, sizeof("END_TRANSMISSION"));
+			memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
 
 		temp = base64_decode(buff);
 		// writes the data in the file
@@ -165,7 +165,7 @@ void transferData(int cd)
 		memset(buff, 0, MAX_BUF_SIZE);
 	}
 
-	if (write(cd, "END_TRANSMISSION", strlen("END_TRANSMISSION")) == -1)
+	if (write(cd, END_TRANSMISSION_SIGNAL, sizeof(END_TRANSMISSION_SIGNAL)) == -1)
 	{
 		perror("Shutdown");
 	}
