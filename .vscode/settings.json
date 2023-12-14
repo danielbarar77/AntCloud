@@ -5,6 +5,7 @@
 		"todo.h": "c",
 		"pthread.h": "c",
 		"semaphore.h": "c",
-		"fcntl.h": "c"
+		"fcntl.h": "c",
+		"unistd.h": "c"
 	}
 }

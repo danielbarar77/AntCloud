@@ -15,27 +15,10 @@
 #include "common.h"
 #include "done.h"
 #include "todo.h"
+#include "networking.h"
 
 #define MAX_NR_THREADS 5
 #define MAX_EVENTS 10
-#define MAX_CONNECTION_QUEUE 5
-
-#define MAX_HOST_NR 20
-
-enum HOST_TYPE{
-    HOST_TYPE_NULL,
-    HOST_TYPE_WORKER,
-    HOST_TYPE_CLIENT
-};
-
-struct parameters
-{
-	int cd; // connection descriptor;
-};
-
-typedef struct parameters parameters_t;
-typedef enum HOST_TYPE host_type_t;
-
 
 void cmd_client_run(char program[MAX_PROGRAM_SIZE], char output[MAX_OUTPUT_SIZE]) {
     todo_info_t todo;
@@ -67,8 +50,8 @@ void cmd_client_run(char program[MAX_PROGRAM_SIZE], char output[MAX_OUTPUT_SIZE]
 
 int main()
 {
-    host_type_t hosts[MAX_HOST_NR]; // hosts[socket_conn] = type of the host connected on the socket
-    memset(hosts, HOST_TYPE_NULL, sizeof(hosts) * MAX_HOST_NR);
+    host_t hosts[MAX_HOST_NR]; // hosts[socket_conn] = type of the host connected on the socket
+    memset(hosts, 0, sizeof(hosts) * MAX_HOST_NR);
 
     struct epoll_event ev, events[MAX_EVENTS];
     int listen_sock, conn_sock, nfds, epollfd;
@@ -149,21 +132,27 @@ int main()
                 }
             } else { // handle event
                 int cd = events[n].data.fd;
-                switch(hosts[cd]){
+                switch(hosts[cd].type){
                 case HOST_TYPE_CLIENT:
+                    if (hosts[cd].pConnection == NULL) {
+                        assignWorker(hosts, cd);
+                    }
                     break;
                 case HOST_TYPE_WORKER:
                     break;
                 case HOST_TYPE_NULL:
                     if (events[n].events & EPOLLIN){
-                        read(cd, buf, MAX_BUF_SIZE);
+                        if ( read(cd, buf, MAX_BUF_SIZE) < 0 ) {
+                            perror("read");
+                            exit(EXIT_FAILURE);
+                        }
 
                         if(strcmp(buf, CLIENT_GREETING) == 0){
                             printf("Added new client: %d\n", cd);
-                            hosts[cd] = HOST_TYPE_CLIENT;
+                            hosts[cd].type = HOST_TYPE_CLIENT;
                         } else if (strcmp(buf, WORKER_GREETING) == 0){
                             printf("Added new worker: %d\n", cd);
-                            hosts[cd] = HOST_TYPE_WORKER;
+                            hosts[cd].type = HOST_TYPE_WORKER;
                         } else {
                             printf("%d: Invalid greeting!\n", cd);
                         }
