@@ -122,7 +122,6 @@ void readCommand(char **buffer, char **command, arguments **args)
 		{
 			memset((*args)->args[i], 0, ARGS_LENGTH);
 		}
-		// memset(*args, 0, sizeof(*args));
 		printf(">");
 		while ((c = getchar()) != '\n')
 		{
@@ -161,10 +160,19 @@ int checkIfExists(char *buf)
 	return 0;
 }
 
-int transferData(arguments args, int sd)
+int transferData(arguments *args, int sd)
 {
+	printf("a intrat in transferData\n");
+	printf("argc = %d\n", args->argc);
+	for (int i = 0; i < args->argc; i++)
+	{
+		printf("%s ", args->args[i]);
+	}
+	printf("|\n");
+	return 0;
+
 	// opens the source file that needs to be sent to the sever
-	int fd = open(args.args[0], O_RDONLY);
+	int fd = open(args->args[0], O_RDONLY);
 
 	if (fd == -1)
 	{
@@ -232,15 +240,15 @@ int transferData(arguments args, int sd)
 		perror("Arguments signal");
 		return -1;
 	}
-	if (write(sd, &(args.argc), sizeof(args.argc)) == -1)
+	if (write(sd, &(args->argc), sizeof(args->argc)) == -1)
 	{
 		perror("Sending argc");
 		return -1;
 	}
 	int index = 0;
-	while (index < args.argc)
+	while (index < args->argc)
 	{
-		wc = write(sd, args.args[index], sizeof(args.args[index]));
+		wc = write(sd, args->args[index], strlen(args->args[index]));
 		if (wc == -1)
 		{
 			perror("Sending args");
@@ -336,21 +344,16 @@ int main()
 
 	// Connect to the server
 	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	loadingScreen();
 	for (;;)
 	{
-		loadingScreen();
 		allocMemory(&buff, &command, &args);
 		readCommand(&buff, &command, &args);
-		printf("argc = %d\n", args->argc);
-		for (int i = 0; i < args->argc; i++)
-		{
-			printf("%s ", args->args[i]);
-		}
-		printf("\n");
-		return 0;
+		printf("inainte de comparare cu run:%s|\n", args->args[0]);
 		if ((strcmp(command, "run") == 0) && (checkIfExists(args->args[0]) == 0)) // checks the existance of the source file
 		{
-			if (transferData(*args, sd) == 0) // transfers the executable to the server
+			printf("inainte de transferData\n");
+			if (transferData(args, sd) == 0) // transfers the executable to the server
 			{
 				printf("SUCCESS TRANSFER OF DATA TO THE SERVER!\n");
 				printf("WAITING FOR THE RESULTS...\n");
