@@ -37,7 +37,7 @@ void reciveData(int cd)
 		if (end != NULL)
 			memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
 		// checks the type of the data
-		type = strstr(buff, CMD_RETURN);
+		type = strstr(buff, CMD_RUN);
 		if (type != NULL)
 		{
 			memset(buff, 0, sizeof(type));
@@ -229,7 +229,6 @@ int main()
 	int sd, cd;
 	char buf[MAX_BUF_SIZE] = "";
 	struct sockaddr_in ser;
-	setvbuf(stdout, NULL, _IONBF, 0);
 
 	// Create a socket
 	sd = socket(AF_INET, SOCK_STREAM, 0);

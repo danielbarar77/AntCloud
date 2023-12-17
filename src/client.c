@@ -11,6 +11,37 @@
 #include "common.h"
 #include "base64.h"
 
+typedef struct arguments
+{
+	char **args;
+	int argc;
+} arguments;
+
+void allocMemory(char **buffer, char **command, arguments **args)
+{
+	*args = (arguments *)malloc(sizeof(arguments));
+	*buffer = (char *)malloc(256 * sizeof(char));
+	*command = (char *)malloc(64 * sizeof(char));
+	(*args)->argc = 0;
+	(*args)->args = (char **)malloc(MAX_ARGS * sizeof(char *));
+	for (int i = 0; i < MAX_ARGS; i++)
+	{
+		(*args)->args[i] = (char *)malloc(ARGS_LENGTH * sizeof(char));
+	}
+}
+
+void freeMemory(char **buffer, char **command, arguments **args)
+{
+	free(*buffer);
+	free(*command);
+	for (int i = 0; i < MAX_ARGS; i++)
+	{
+		free((*args)->args[i]);
+	}
+	free((*args)->args);
+	free(*args);
+}
+
 void printHelp()
 {
 	int fd = open("help.txt", O_RDONLY);
@@ -27,33 +58,96 @@ void printHelp()
 	}
 }
 
-void readCommand()
+void tokenizeInput(char **buffer, char **command, arguments **args)
+{
+	if (strlen(*buffer) == 1)
+	{
+		strncpy(*command, *buffer, 1);
+		(*command)[1] = '\0';
+		return;
+	}
+	char *temp = (char *)malloc(256 * sizeof(char));
+	strcpy(temp, *buffer);
+	char *token;
+	token = strtok(temp, " \n\r");
+	if (token != NULL)
+	{
+		strncpy(*command, token, strlen(token));
+		command[strlen(token)] = '\0';
+	}
+
+	(*args)->argc = 0;
+	while ((token = strtok(NULL, " \n\r\0")))
+	{
+		if ((*args)->argc < MAX_ARGS)
+		{
+			strncpy((*args)->args[(*args)->argc], token, strlen(token));
+			(*args)->args[(*args)->argc][strlen(token)] = '\0';
+			(*args)->argc++;
+		}
+		else
+		{
+			printf("Maximum arguments is 16 !\n");
+			break;
+		}
+	}
+	free(temp);
+}
+
+void loadingScreen()
 {
 	setvbuf(stdout, NULL, _IONBF, 0);
-	char *command = (char *)malloc(128 * sizeof(char));
-
 	printf("		");
-	for (int i = 0; i < 24; i++)
+	for (int i = 0; i < 27; i++)
 	{
 		printf("#");
 		usleep(25000);
 	}
 	usleep(75000);
-	printf("\n			  100% 				\n");
+	printf("\n\t\t\t   100%%\n");
 	usleep(125000);
-	printf("\n		****Welcome to Agora****		\n\n");
+	printf("\n\t\t****Welcome to AntCloud****\t\t\n\n");
+}
 
+void readCommand(char **buffer, char **command, arguments **args)
+{
+	char c;
+	int index = -1;
 	while (1)
 	{
+		index = -1;
+		memset(*buffer, 0, 256);
+		memset(*command, 0, 64);
+		for (int i = 0; i < MAX_ARGS; i++)
+		{
+			memset((*args)->args[i], 0, ARGS_LENGTH);
+		}
+		// memset(*args, 0, sizeof(*args));
 		printf(">");
-		scanf("%s", command);
-		if ((strcmp(command, "?") == 0) || (strcmp(command, "help") == 0) || (strcmp(command, "-h") == 0))
+		while ((c = getchar()) != '\n')
+		{
+			(*buffer)[++index] = c;
+		}
+		tokenizeInput(buffer, command, args);
+		if ((strcmp(*buffer, "?") == 0) || (strcmp(*buffer, "help") == 0) || (strcmp(*buffer, "-h") == 0))
 		{
 			printHelp();
 		}
-		if ((strcmp(command, "exit") == 0) || (strcmp(command, "q") == 0))
+		else if ((strcmp(*buffer, "exit") == 0) || (strcmp(*buffer, "q") == 0))
 		{
 			exit(0);
+		}
+		else if (strcmp(*command, "run") == 0)
+		{
+			if ((*args)->argc > 0)
+				return;
+			else
+				printf("Incorrect syntax! Try \"help\" for more info.\n");
+		}
+		else if ((*buffer)[0] != 0)
+		{
+			printf("Command \'%s\' not found!\n", *buffer);
+			printf("Try \'help\' for documentation.\n");
 		}
 	}
 }
@@ -67,10 +161,10 @@ int checkIfExists(char *buf)
 	return 0;
 }
 
-int transferData(char *filename, int sd)
+int transferData(arguments args, int sd)
 {
 	// opens the source file that needs to be sent to the sever
-	int fd = open(filename, O_RDONLY);
+	int fd = open(args.args[0], O_RDONLY);
 
 	if (fd == -1)
 	{
@@ -133,10 +227,33 @@ int transferData(char *filename, int sd)
 		return -1;
 	}
 
+	if (write(sd, ARGUMENTS_SIGNAL, sizeof(ARGUMENTS_SIGNAL)) == -1)
+	{
+		perror("Arguments signal");
+		return -1;
+	}
+	if (write(sd, &(args.argc), sizeof(args.argc)) == -1)
+	{
+		perror("Sending argc");
+		return -1;
+	}
+	int index = 0;
+	while (index < args.argc)
+	{
+		wc = write(sd, args.args[index], sizeof(args.args[index]));
+		if (wc == -1)
+		{
+			perror("Sending args");
+			return -1;
+		}
+		index++;
+	}
+
 	// writes a message the signals the end of the transmission
 	if (write(sd, END_TRANSMISSION_SIGNAL, sizeof(END_TRANSMISSION_SIGNAL)) == -1)
 	{
 		perror("Shutdown");
+		return -1;
 	}
 
 	return 0;
@@ -203,8 +320,8 @@ void reciveData(int sd)
 int main()
 {
 	int sd;
-	char buf[MAX_BUF_SIZE];
-	char *command = (char *)malloc(128 * sizeof(command));
+	char *buff = NULL, *command = NULL;
+	arguments *args = NULL;
 	struct sockaddr_in ser;
 
 	// Create a socket
@@ -219,17 +336,22 @@ int main()
 
 	// Connect to the server
 	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
-	// write(sd, CLIENT_GREETING, sizeof(CLIENT_GREETING));
 	for (;;)
 	{
-		readCommand();
-		scanf("%s", buf); // reads the filepath
-		printf("ENTER THE EXECUTABLE: \n");
-		if (checkIfExists(buf) == 0) // checks the existance of the file
+		loadingScreen();
+		allocMemory(&buff, &command, &args);
+		readCommand(&buff, &command, &args);
+		printf("argc = %d\n", args->argc);
+		for (int i = 0; i < args->argc; i++)
 		{
-			if (transferData(buf, sd) == 0) // transfers the executable to the server
+			printf("%s ", args->args[i]);
+		}
+		printf("\n");
+		return 0;
+		if ((strcmp(command, "run") == 0) && (checkIfExists(args->args[0]) == 0)) // checks the existance of the source file
+		{
+			if (transferData(*args, sd) == 0) // transfers the executable to the server
 			{
-				printf("S-a tranferat catre worker!\n");
 				printf("SUCCESS TRANSFER OF DATA TO THE SERVER!\n");
 				printf("WAITING FOR THE RESULTS...\n");
 				reciveData(sd); // get the data from the server
@@ -242,8 +364,9 @@ int main()
 		}
 		else
 		{
-			printf("INVALID FILE OR CANNOT READ FROM IT!\n");
+			printf("INVALID SOURCE FILE OR CANNOT READ FROM IT!\n");
 		}
+		freeMemory(&buff, &command, &args);
 	}
 
 	close(sd);
