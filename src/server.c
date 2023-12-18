@@ -13,16 +13,13 @@
 #include <string.h>
 
 #include "common.h"
-#include "route.h"
-#include "networking.h"
+#include "svnet.h"
 
 #define MAX_EVENTS 10
 #define SERVER_PORT 1101
 
 int main()
 {
-    host_t hosts[MAX_HOST_NR]; // hosts[socket_conn] = type of the host connected on the socket
-    memset(hosts, 0, sizeof(hosts) * MAX_HOST_NR);
 
     struct epoll_event ev, events[MAX_EVENTS];
     int listen_sock, conn_sock, nfds, epollfd;
@@ -85,8 +82,10 @@ int main()
                 }
                 if (hostCount < MAX_HOST_NR) {
                     printf("Connection accepted: %d\n", conn_sock);
-                    fcntl(conn_sock, F_SETFL, fcntl(conn_sock, F_GETFL) | O_NONBLOCK); // set nonblocking
-                    ev.events = EPOLLIN | EPOLLET;
+                    //fcntl(conn_sock, F_SETFL, fcntl(conn_sock, F_GETFL) | O_NONBLOCK); // set nonblocking
+                    //ev.events = EPOLLIN | EPOLLOUT | EPOLLET; // edge-triggered
+                    ev.events = EPOLLIN | EPOLLOUT; // level-triggered
+
                     ev.data.fd = conn_sock;
                     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &ev) == -1) {
                         perror("epoll_ctl: conn_sock");
@@ -100,15 +99,58 @@ int main()
                 int cd = events[n].data.fd;
                 switch(hosts[cd].type){
                 case HOST_TYPE_CLIENT:
+                    // if(events[n].events & EPOLLHUP){
+                    //     printf("Client %d: closed connection.\n", cd);
+                    //     epoll_ctl(epollfd, EPOLL_CTL_DEL, cd, NULL);
+                    //     break;
+                    // }
                     if (hosts[cd].pConnection == NULL) {
                         assignWorker(hosts, cd);
                     }
+                    if ((events[n].events & EPOLLIN) && hosts[cd].pConnection != NULL) {
+                        if (isSender(cd, *(hosts[cd].pConnection)) && hosts[cd].pConnection->hasMsgToRead == 0) {
+                            memset(buf, 0, MAX_BUF_SIZE);
+                            int rc = read(cd, buf, MAX_BUF_SIZE); // read msg from client
+
+                            if (rc < 0) {
+                                perror("read");
+                            } else {
+                                printf("%d connWriteMsg: %s\n", cd, buf);
+                                connWriteMsg(buf, hosts[cd].pConnection); // write msg to worker
+                            }
+                            
+                        }
+                    }
                     break;
                 case HOST_TYPE_WORKER:
+                    // if ((events[n].events & EPOLLOUT))
+                    //     printf("Can write to worker!\n");
+                    if (hosts[cd].pConnection != NULL) {
+                        if ((events[n].events & EPOLLOUT)) {
+                            if (isReceiver(cd, *(hosts[cd].pConnection))) {
+                                memset(buf, 0, MAX_BUF_SIZE);
+                                int crm = connReadMsg(buf, hosts[cd].pConnection); // read msg from client
+
+                                if (crm == 0) {
+                                    printf("%d connReadMsg: %s\n", cd, buf);
+                                    int wc = write(cd, buf, sizeof(buf)); // send msg to worker
+
+                                    if (wc < 0){
+                                        perror("write");
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    // if(events[n].events & EPOLLHUP){
+                    //     printf("Client %d: closed connection.\n", cd);
+                    //     epoll_ctl(epollfd, EPOLL_CTL_DEL, cd, NULL);
+                    // }
                     break;
                 case HOST_TYPE_NULL:
                     if (events[n].events & EPOLLIN) {
-                        if ( read(cd, buf, MAX_BUF_SIZE) < 0 ) {
+                        memset(buf, 0, MAX_BUF_SIZE);
+                        if ( read(cd, buf, GREETING_SIZE) < 0 ) {
                             perror("read");
                             exit(EXIT_FAILURE);
                         }
@@ -125,7 +167,7 @@ int main()
                     }
                     break;
                 default:
-                    printf("Invalid host type for socket: %lu\n", cd);
+                    printf("Invalid host type for socket: %d\n", cd);
                     break;
                 }
             }

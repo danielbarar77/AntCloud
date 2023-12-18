@@ -228,6 +228,14 @@ int main()
 	printf("Greeting server...\n");
 	write(sd, WORKER_GREETING, sizeof(WORKER_GREETING));
 
+	// TESTING : read testStr from client
+	read(sd, buf, MAX_BUF_SIZE);
+	printf("testStr: %s", buf);
+
+	while(1){
+		sleep(1);
+	}
+
 	close(sd);
 
 	return 0;

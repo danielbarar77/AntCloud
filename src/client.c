@@ -146,8 +146,31 @@ int main()
 	inet_aton("localhost", &ser.sin_addr);
 
 	// Connect to the server
+	printf("Connecting to server...\n");
 	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	printf("Connected to server!\n");
+	printf("Greeting server...\n");
 	write(sd, CLIENT_GREETING, sizeof(CLIENT_GREETING));
+	printf("Server greeted!\n");
+
+	// printf("Waiting 5 seconds...\n");
+	// sleep(5);
+
+	printf("Writing test string to server...\n");
+	// Testing message writing to worker
+	const char testStr[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz\n";
+	int wc = write(sd, testStr, sizeof(testStr));
+	
+	if (wc < 0){
+		perror("write");
+		exit(EXIT_FAILURE);
+	}
+
+	printf("Test str written to the server!\n");
+
+	while(1){
+		sleep(1);
+	}
 
 	close(sd);
 
