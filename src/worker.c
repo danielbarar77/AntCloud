@@ -11,6 +11,31 @@
 #include "common.h"
 #include "base64.h"
 
+void allocMemory(char **buffer, char **command, arguments **args)
+{
+	*args = (arguments *)malloc(sizeof(arguments));
+	*buffer = (char *)malloc(256 * sizeof(char));
+	*command = (char *)malloc(64 * sizeof(char));
+	(*args)->argc = 0;
+	(*args)->args = (char **)malloc(MAX_ARGS * sizeof(char *));
+	for (int i = 0; i < MAX_ARGS; i++)
+	{
+		(*args)->args[i] = (char *)malloc(ARGS_LENGTH * sizeof(char));
+	}
+}
+
+void freeMemory(char **buffer, char **command, arguments **args)
+{
+	free(*buffer);
+	free(*command);
+	for (int i = 0; i < MAX_ARGS; i++)
+	{
+		free((*args)->args[i]);
+	}
+	free((*args)->args);
+	free(*args);
+}
+
 void reciveData(int cd)
 {
 	char *buff = (char *)malloc(MAX_BUF_SIZE * sizeof(char));
@@ -20,7 +45,7 @@ void reciveData(int cd)
 	int fd = open("../temp/source.c", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1)
 		perror("Creating source.c file");
-	char *end, *type;
+	char *end = NULL, *type = NULL, *argSignal = NULL;
 
 	// reads from the socket
 	while ((rc = read(cd, buff, MAX_BUF_SIZE)) > 0)
@@ -31,11 +56,6 @@ void reciveData(int cd)
 			free(buff);
 			exit(-1);
 		}
-		// checks if the transmission was ended
-
-		end = strstr(buff, END_TRANSMISSION_SIGNAL);
-		if (end != NULL)
-			memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
 		// checks the type of the data
 		type = strstr(buff, CMD_RUN);
 		if (type != NULL)
@@ -43,7 +63,19 @@ void reciveData(int cd)
 			memset(buff, 0, sizeof(type));
 			buff += sizeof(type);
 		}
+		// checks if arguments were sent
+		argSignal = strstr(buff, ARGUMENTS_SIGNAL);
+		if (argSignal != NULL)
+		{
+			break;
+		}
 
+		// // checks if the transmission was ended
+		// end = strstr(buff, END_TRANSMISSION_SIGNAL);
+		// if (end != NULL)
+		// 	memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
+
+		// decodes the source file
 		temp = base64_decode(buff);
 		// writes the data in the file
 		wc = write(fd, temp, strlen(temp));
@@ -61,6 +93,21 @@ void reciveData(int cd)
 		}
 
 		memset(buff, 0, MAX_BUF_SIZE);
+	}
+	while ((rc = read(cd, buff, MAX_BUF_SIZE)) > 0)
+	{
+		// trebuie sa citesc pana intalnesc ARGGUMENTS_SIGNAL
+		// scriu tot ce am pana acolo in source.c
+		// pe urma continui intr-un while sa citesc pana la END_TRANS
+		//	PROBLEMA!!
+		//		in cazul in care se afla si argumentele in buffer,
+		//		trebuie sa salvez in buffer si sa verific lungimea
+		//		pe urma citesc pana la intalnirea semnalului END_TRANS
+	}
+
+	if (argSignal != NULL)
+	{
+		exit(1);
 	}
 	free(buff);
 
@@ -227,7 +274,8 @@ void removeFiles()
 int main()
 {
 	int sd, cd;
-	char buf[MAX_BUF_SIZE] = "";
+	char *buff = NULL, *command = NULL;
+	arguments *args = NULL;
 	struct sockaddr_in ser;
 
 	// Create a socket
@@ -244,8 +292,8 @@ int main()
 	int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
 	while (b == -1)
 	{
-		sleep(0.5);
-		printf("Incearca conexiunea: %d!\n", b);
+		sleep(1);
+		printf("Bind value: %d!\n", b);
 		b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
 	}
 	printf("BIND VALUE: %d\n", b);
@@ -269,11 +317,13 @@ int main()
 		{
 			printf("Connection successful!\n");
 		}
+		allocMemory(&buff, &command, &args);
 		reciveData(cd);
 		compile();
 		runExecutable();
 		transferData(cd);
 		removeFiles();
+		freeMemory(&buff, &command, &args);
 	}
 	////////////////////////
 

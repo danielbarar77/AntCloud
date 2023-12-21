@@ -14,3 +14,9 @@
 #define MAX_ARGS 16
 #define ARGS_LENGTH 64
 #define ARGUMENTS_SIGNAL "ARGUMENTS_SIGNAL"
+
+typedef struct arguments
+{
+	char **args;
+	int argc;
+} arguments;

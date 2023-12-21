@@ -11,12 +11,6 @@
 #include "common.h"
 #include "base64.h"
 
-typedef struct arguments
-{
-	char **args;
-	int argc;
-} arguments;
-
 void allocMemory(char **buffer, char **command, arguments **args)
 {
 	*args = (arguments *)malloc(sizeof(arguments));
@@ -162,15 +156,6 @@ int checkIfExists(char *buf)
 
 int transferData(arguments *args, int sd)
 {
-	printf("a intrat in transferData\n");
-	printf("argc = %d\n", args->argc);
-	for (int i = 0; i < args->argc; i++)
-	{
-		printf("%s ", args->args[i]);
-	}
-	printf("|\n");
-	return 0;
-
 	// opens the source file that needs to be sent to the sever
 	int fd = open(args->args[0], O_RDONLY);
 
@@ -240,21 +225,29 @@ int transferData(arguments *args, int sd)
 		perror("Arguments signal");
 		return -1;
 	}
-	if (write(sd, &(args->argc), sizeof(args->argc)) == -1)
+	if ((wc = write(sd, &(args->argc), sizeof(args->argc))) == -1)
 	{
 		perror("Sending argc");
 		return -1;
 	}
+	printf("pentru argc:%d  wc=%d|\n", args->argc, wc);
 	int index = 0;
 	while (index < args->argc)
 	{
 		wc = write(sd, args->args[index], strlen(args->args[index]));
+		printf("arg[%d]=%s   wc=%d|\n", index, args->args[index], wc);
 		if (wc == -1)
 		{
 			perror("Sending args");
 			return -1;
 		}
 		index++;
+		wc = write(sd, " ", 1);
+		if (wc == -1)
+		{
+			perror("Spacing for args");
+			return -1;
+		}
 	}
 
 	// writes a message the signals the end of the transmission
@@ -349,10 +342,8 @@ int main()
 	{
 		allocMemory(&buff, &command, &args);
 		readCommand(&buff, &command, &args);
-		printf("inainte de comparare cu run:%s|\n", args->args[0]);
 		if ((strcmp(command, "run") == 0) && (checkIfExists(args->args[0]) == 0)) // checks the existance of the source file
 		{
-			printf("inainte de transferData\n");
 			if (transferData(args, sd) == 0) // transfers the executable to the server
 			{
 				printf("SUCCESS TRANSFER OF DATA TO THE SERVER!\n");
