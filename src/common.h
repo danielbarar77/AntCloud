@@ -17,6 +17,6 @@
 
 typedef struct arguments
 {
-	char **args;
+	char **argv;
 	int argc;
 } arguments;

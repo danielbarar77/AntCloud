@@ -11,115 +11,140 @@
 #include "common.h"
 #include "base64.h"
 
-void allocMemory(char **buffer, char **command, arguments **args)
+void allocMemory(char **command, arguments **args)
 {
 	*args = (arguments *)malloc(sizeof(arguments));
-	*buffer = (char *)malloc(256 * sizeof(char));
 	*command = (char *)malloc(64 * sizeof(char));
 	(*args)->argc = 0;
-	(*args)->args = (char **)malloc(MAX_ARGS * sizeof(char *));
+	(*args)->argv = (char **)malloc(MAX_ARGS * sizeof(char *));
 	for (int i = 0; i < MAX_ARGS; i++)
 	{
-		(*args)->args[i] = (char *)malloc(ARGS_LENGTH * sizeof(char));
+		(*args)->argv[i] = (char *)malloc(ARGS_LENGTH * sizeof(char));
 	}
 }
 
-void freeMemory(char **buffer, char **command, arguments **args)
+void freeMemory(char **command, arguments **args)
 {
-	free(*buffer);
 	free(*command);
 	for (int i = 0; i < MAX_ARGS; i++)
 	{
-		free((*args)->args[i]);
+		free((*args)->argv[i]);
 	}
-	free((*args)->args);
+	free((*args)->argv);
 	free(*args);
 }
 
-void reciveData(int cd)
+void reciveData(int cd, arguments **args)
 {
 	char *buff = (char *)malloc(MAX_BUF_SIZE * sizeof(char));
 	char *temp;
 	int rc, wc;
+	int buff_length = 0, temp_length = 0;
 	// opens or create the file in which the recived data will be stored
 	int fd = open("../temp/source.c", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1)
+	{
 		perror("Creating source.c file");
-	char *end = NULL, *type = NULL, *argSignal = NULL;
-
-	// reads from the socket
-	while ((rc = read(cd, buff, MAX_BUF_SIZE)) > 0)
-	{
-		if (rc == -1)
-		{
-			perror("Reading from the server");
-			free(buff);
-			exit(-1);
-		}
-		// checks the type of the data
-		type = strstr(buff, CMD_RUN);
-		if (type != NULL)
-		{
-			memset(buff, 0, sizeof(type));
-			buff += sizeof(type);
-		}
-		// checks if arguments were sent
-		argSignal = strstr(buff, ARGUMENTS_SIGNAL);
-		if (argSignal != NULL)
-		{
-			break;
-		}
-
-		// // checks if the transmission was ended
-		// end = strstr(buff, END_TRANSMISSION_SIGNAL);
-		// if (end != NULL)
-		// 	memset(end, 0, sizeof(END_TRANSMISSION_SIGNAL));
-
-		// decodes the source file
-		temp = base64_decode(buff);
-		// writes the data in the file
-		wc = write(fd, temp, strlen(temp));
-		free(temp);
-
-		if (wc == -1)
-		{
-			perror("Writing in source.c");
-			free(buff);
-			exit(-1);
-		}
-		if (end != NULL)
-		{
-			break;
-		}
-
-		memset(buff, 0, MAX_BUF_SIZE);
-	}
-	while ((rc = read(cd, buff, MAX_BUF_SIZE)) > 0)
-	{
-		// trebuie sa citesc pana intalnesc ARGGUMENTS_SIGNAL
-		// scriu tot ce am pana acolo in source.c
-		// pe urma continui intr-un while sa citesc pana la END_TRANS
-		//	PROBLEMA!!
-		//		in cazul in care se afla si argumentele in buffer,
-		//		trebuie sa salvez in buffer si sa verific lungimea
-		//		pe urma citesc pana la intalnirea semnalului END_TRANS
-	}
-
-	if (argSignal != NULL)
-	{
 		exit(1);
 	}
-	free(buff);
 
-	if (rc == 0)
+	// waitng for CMD_RUN signal
+	rc = read(cd, buff, strlen(CMD_RUN));
+	if (rc == -1)
 	{
-		printf("End of data transmission from the client\n");
+		perror("reading CMD_RUN");
+		exit(1);
 	}
-	else
+	while (strcmp(buff, CMD_RUN) != 0)
 	{
-		perror("Reading");
+		rc = read(cd, buff, strlen(CMD_RUN));
+		if (rc == -1)
+		{
+			perror("reading CMD_RUN");
+			exit(1);
+		}
+	}
+
+	// reading the buff length
+	rc = read(cd, &buff_length, 4);
+	if (rc == -1)
+	{
+		perror("reading buff length");
+		exit(1);
+	}
+
+	// reading the buffer of buff_length size
+	rc = read(cd, buff, buff_length);
+	if (rc == -1)
+	{
+		perror("reading buff length");
+		exit(1);
+	}
+	buff[buff_length] = '\0';
+
+	// decoding from b64
+	temp = base64_decode(buff);
+	temp_length = strlen(temp);
+
+	// writing in source.c
+	wc = write(fd, temp, temp_length);
+	if (wc == -1)
+	{
+		perror("writing in source.c");
+		exit(1);
 	}
 	close(fd);
+	memset(buff, 0, MAX_BUF_SIZE);
+	// waiting for ARGUMENTS_SIGNAL
+	rc = read(cd, buff, strlen(ARGUMENTS_SIGNAL));
+	if (rc == -1)
+	{
+		perror("reading ARGUMENTS_SIGNAL");
+		exit(1);
+	}
+	while (strcmp(buff, ARGUMENTS_SIGNAL) != 0)
+	{
+		rc = read(cd, buff, strlen(ARGUMENTS_SIGNAL));
+		if (rc == -1)
+		{
+			perror("reading ARGUMENTS_SIGNAL");
+			exit(1);
+		}
+	}
+
+	// read argc
+	if ((rc = read(cd, &((*args)->argc), 4)) == -1)
+	{
+		perror("read argc");
+		exit(1);
+	}
+	int argv_len = 0;
+	// read argvs
+	for (int i = 0; i < (*args)->argc; i++)
+	{
+		read(cd, &argv_len, 4);
+		read(cd, buff, argv_len);
+		strncpy((*args)->argv[i], buff, argv_len);
+	}
+
+	// waiting for END_TRANSMISSION_SIGNAL
+	rc = read(cd, buff, strlen(END_TRANSMISSION_SIGNAL));
+	if (rc == -1)
+	{
+		perror("reading END_TRANSMISSION_SIGNAL");
+		exit(1);
+	}
+	while (strcmp(buff, END_TRANSMISSION_SIGNAL) != 0)
+	{
+		rc = read(cd, buff, strlen(END_TRANSMISSION_SIGNAL));
+		if (rc == -1)
+		{
+			perror("reading END_TRANSMISSION_SIGNAL");
+			exit(1);
+		}
+	}
+
+	free(buff);
 }
 
 void compile()
@@ -189,6 +214,7 @@ void transferData(int cd)
 	int rc, wc;
 	char buff[MAX_BUF_SIZE];
 	char *temp;
+	int temp_length = 0;
 	// opens the output.txt for read
 	int fd = open("../temp/output.txt", O_RDONLY);
 	if (fd == -1)
@@ -199,7 +225,7 @@ void transferData(int cd)
 	memset(buff, 0, MAX_BUF_SIZE);
 
 	// informs the server that I will send a the return value
-	wc = write(cd, CMD_RETURN, sizeof(CMD_RETURN));
+	wc = write(cd, CMD_RETURN, strlen(CMD_RETURN));
 	if (wc == -1)
 	{
 		perror("Writing CMD_RETURN to the server");
@@ -212,41 +238,37 @@ void transferData(int cd)
 	}
 
 	// reads from the output.txt
-	while ((rc = read(fd, buff, MAX_BUF_SIZE)) > 0)
+	rc = read(fd, buff, MAX_BUF_SIZE);
+	if (rc == -1)
 	{
-		printf("output.txt: %s\n", buff);
-		if (rc == -1)
-		{
-			perror("Reading from output.txt");
-			exit(-1);
-		}
-		// writes to the server
-		temp = base64_encode(buff);
-		wc = write(cd, temp, strlen(temp)); // wites to the server
-		free(temp);
-
-		if (wc == -1)
-		{
-			perror("Writing in socket");
-			exit(-1);
-		}
-		memset(buff, 0, MAX_BUF_SIZE);
-	}
-
-	if (write(cd, END_TRANSMISSION_SIGNAL, sizeof(END_TRANSMISSION_SIGNAL)) == -1)
-	{
-		perror("Shutdown");
-	}
-
-	if (rc == 0)
-	{
-		printf("End of data transmission to the client\n");
-	}
-	else
-	{
-		perror("Reading");
+		perror("Reading from output.txt");
+		exit(-1);
 	}
 	close(fd);
+
+	temp = base64_encode(buff);
+	temp_length = strlen(temp);
+
+	// sending the buffer length
+	if ((wc = write(cd, &temp_length, 4)) == -1)
+	{
+		perror("sending buffer length");
+		exit(1);
+	}
+
+	// sending the buffer
+	if ((wc = write(cd, temp, strlen(temp))) == -1)
+	{
+		perror("sending the buffer");
+		exit(1);
+	}
+	free(temp);
+
+	if (write(cd, END_TRANSMISSION_SIGNAL, strlen(END_TRANSMISSION_SIGNAL)) == -1)
+	{
+		perror("Shutdown");
+		exit(1);
+	}
 }
 
 void removeFiles()
@@ -274,7 +296,7 @@ void removeFiles()
 int main()
 {
 	int sd, cd;
-	char *buff = NULL, *command = NULL;
+	char *command = NULL;
 	arguments *args = NULL;
 	struct sockaddr_in ser;
 
@@ -317,13 +339,13 @@ int main()
 		{
 			printf("Connection successful!\n");
 		}
-		allocMemory(&buff, &command, &args);
-		reciveData(cd);
+		allocMemory(&command, &args);
+		reciveData(cd, &args);
 		compile();
 		runExecutable();
 		transferData(cd);
 		removeFiles();
-		freeMemory(&buff, &command, &args);
+		freeMemory(&command, &args);
 	}
 	////////////////////////
 
