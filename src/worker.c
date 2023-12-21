@@ -126,6 +126,7 @@ void reciveData(int cd, arguments **args)
 		read(cd, buff, argv_len);
 		strncpy((*args)->argv[i], buff, argv_len);
 	}
+	(*args)->argv[(*args)->argc] = NULL;
 
 	// waiting for END_TRANSMISSION_SIGNAL
 	rc = read(cd, buff, strlen(END_TRANSMISSION_SIGNAL));
@@ -173,7 +174,7 @@ void compile()
 	}
 }
 
-void runExecutable()
+void runExecutable(arguments *args)
 {
 	// creates a child process that executes the executable
 	int pid = fork();
@@ -194,8 +195,9 @@ void runExecutable()
 		// duplicates the STDOUT file descriptor to the output.txt
 		dup2(fd, STDOUT_FILENO);
 		close(fd);
-		// runs the code
-		if (execl("../temp/./executable", "executable", (char *)NULL) == -1)
+
+		// runs the executable
+		if (execv("../temp/./executable", args->argv) == -1)
 		{
 			perror("Running the executable");
 			exit(-1);
@@ -342,7 +344,7 @@ int main()
 		allocMemory(&command, &args);
 		reciveData(cd, &args);
 		compile();
-		runExecutable();
+		runExecutable(args);
 		transferData(cd);
 		removeFiles();
 		freeMemory(&command, &args);
