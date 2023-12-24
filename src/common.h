@@ -1,3 +1,6 @@
+#ifndef COMMON_H // Include guard to prevent multiple inclusions
+#define COMMON_H
+
 #define CMD_RUN "run"
 #define CMD_RETURN "return"
 
@@ -23,3 +26,5 @@ typedef struct arguments
 	char **argv;
 	int argc;
 } arguments;
+
+#endif

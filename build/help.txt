@@ -20,4 +20,3 @@ COMMANDS
 
 	exit q
 		Exit the program.
-

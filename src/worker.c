@@ -365,23 +365,23 @@ int main()
 	freeMemory(&command, &args);
 	////////////////////////
 
-	// Connect to the server
-	printf("Connecting to server...\n");
-	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
-	printf("Connection successful!\n");
+	// // Connect to the server
+	// printf("Connecting to server...\n");
+	// connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	// printf("Connection successful!\n");
 
-	// Greet the server
-	printf("Greeting server...\n");
-	write(sd, WORKER_GREETING, sizeof(WORKER_GREETING));
+	// // Greet the server
+	// printf("Greeting server...\n");
+	// write(sd, WORKER_GREETING, sizeof(WORKER_GREETING));
 
-	// TESTING : read testStr from client
-	read(sd, buf, MAX_BUF_SIZE);
-	printf("testStr: %s", buf);
+	// // TESTING : read testStr from client
+	// read(sd, buf, MAX_BUF_SIZE);
+	// printf("testStr: %s", buf);
 
-	while (1)
-	{
-		sleep(1);
-	}
+	// while (1)
+	// {
+	// 	sleep(1);
+	// }
 
 	close(sd);
 
