@@ -1,0 +1,10 @@
+{
+	"C_Cpp.default.compilerPath": "/usr/bin/gcc",
+	"files.associations": {
+		"in.h": "c",
+		"todo.h": "c",
+		"pthread.h": "c",
+		"semaphore.h": "c",
+		"fcntl.h": "c"
+	}
+}
