@@ -23,6 +23,16 @@ void allocMemory(char **command, arguments **args)
 	}
 }
 
+void resetMemory(char **command, arguments **args)
+{
+	memset(*command, 0, 64);
+	for (int i = 0; i < (*args)->argc; i++)
+	{
+		memset((*args)->argv[i], 0, ARGS_LENGTH);
+	}
+	(*args)->argc = 0;
+}
+
 void freeMemory(char **command, arguments **args)
 {
 	free(*command);
@@ -48,6 +58,7 @@ void reciveData(int cd, arguments **args)
 		exit(1);
 	}
 
+	memset(buff, 0, MAX_BUF_SIZE);
 	// waitng for CMD_RUN signal
 	rc = read(cd, buff, strlen(CMD_RUN));
 	if (rc == -1)
@@ -73,6 +84,7 @@ void reciveData(int cd, arguments **args)
 		exit(1);
 	}
 
+	memset(buff, 0, MAX_BUF_SIZE);
 	// reading the buffer of buff_length size
 	rc = read(cd, buff, buff_length);
 	if (rc == -1)
@@ -128,6 +140,7 @@ void reciveData(int cd, arguments **args)
 	}
 	(*args)->argv[(*args)->argc] = NULL;
 
+	memset(buff, 0, MAX_BUF_SIZE);
 	// waiting for END_TRANSMISSION_SIGNAL
 	rc = read(cd, buff, strlen(END_TRANSMISSION_SIGNAL));
 	if (rc == -1)
@@ -224,7 +237,6 @@ void transferData(int cd)
 		perror("Reading from output.txt");
 		exit(-1);
 	}
-	memset(buff, 0, MAX_BUF_SIZE);
 
 	// informs the server that I will send a the return value
 	wc = write(cd, CMD_RETURN, strlen(CMD_RETURN));
@@ -238,6 +250,7 @@ void transferData(int cd)
 		printf("Couldn't send CMD_RETURN to the server!");
 		exit(-1);
 	}
+	memset(buff, 0, MAX_BUF_SIZE);
 
 	// reads from the output.txt
 	rc = read(fd, buff, MAX_BUF_SIZE);
@@ -329,26 +342,27 @@ int main()
 	listen(sd, 5);
 	printf("Connecting to client...\n");
 
+	cd = accept(sd, NULL, NULL);
+	if (cd == -1)
+	{
+		printf("Coudn't accept connection!\n");
+		return -1;
+	}
+	else
+	{
+		printf("Connection successful!\n");
+	}
+	allocMemory(&command, &args);
 	while (1)
 	{
-		cd = accept(sd, NULL, NULL);
-		if (cd == -1)
-		{
-			printf("Coudn't accept connection!\n");
-			return -1;
-		}
-		else
-		{
-			printf("Connection successful!\n");
-		}
-		allocMemory(&command, &args);
 		reciveData(cd, &args);
 		compile();
 		runExecutable(args);
 		transferData(cd);
 		removeFiles();
-		freeMemory(&command, &args);
+		resetMemory(&command, &args);
 	}
+	freeMemory(&command, &args);
 	////////////////////////
 
 	// Connect to the server

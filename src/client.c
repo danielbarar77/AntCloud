@@ -24,6 +24,17 @@ void allocMemory(char **buffer, char **command, arguments **args)
 	}
 }
 
+void resetMemory(char **buffer, char **command, arguments **args)
+{
+	memset(*command, 0, 64);
+	memset(*buffer, 0, 256);
+	for (int i = 0; i < (*args)->argc; i++)
+	{
+		memset((*args)->argv[i], 0, ARGS_LENGTH);
+	}
+	(*args)->argc = 0;
+}
+
 void freeMemory(char **buffer, char **command, arguments **args)
 {
 	free(*buffer);
@@ -265,6 +276,7 @@ void reciveData(int sd)
 	char *temp = NULL;
 	int rc, wc;
 	int buff_length = 0, temp_length = 0;
+	memset(buff, 0, MAX_BUF_SIZE);
 
 	// waitng for CMD_RUN signal
 	rc = read(sd, buff, strlen(CMD_RETURN));
@@ -290,7 +302,8 @@ void reciveData(int sd)
 		perror("reading buff_length");
 		exit(1);
 	}
-
+	memset(buff, 0, MAX_BUF_SIZE);
+	// reading the buffer
 	rc = read(sd, buff, buff_length);
 	if (rc == -1)
 	{
@@ -302,8 +315,25 @@ void reciveData(int sd)
 	temp = base64_decode(buff);
 	temp_length = strlen(temp);
 
-	// writing to console
+	memset(buff, 0, MAX_BUF_SIZE);
+	// waiting for END_TRANSMISSION_SIGNAL
+	rc = read(sd, buff, strlen(END_TRANSMISSION_SIGNAL));
+	if (rc == -1)
+	{
+		perror("reading END_TRANSMISSION_SIGNAL");
+		exit(1);
+	}
+	while (strcmp(buff, END_TRANSMISSION_SIGNAL) != 0)
+	{
+		rc = read(sd, buff, strlen(END_TRANSMISSION_SIGNAL));
+		if (rc == -1)
+		{
+			perror("reading END_TRANSMISSION_SIGNAL");
+			exit(1);
+		}
+	}
 
+	// writing to console
 	wc = write(STDOUT_FILENO, temp, temp_length);
 	if (wc == -1)
 	{
@@ -335,9 +365,9 @@ int main()
 	// Connect to the server
 	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
 	loadingScreen();
+	allocMemory(&buff, &command, &args);
 	for (;;)
 	{
-		allocMemory(&buff, &command, &args);
 		readCommand(&buff, &command, &args);
 		if ((strcmp(command, "run") == 0) && (checkIfExists(args->argv[0]) == 0)) // checks the existance of the source file
 		{
@@ -358,8 +388,9 @@ int main()
 		{
 			printf("INVALID SOURCE FILE OR CANNOT READ FROM IT!\n");
 		}
-		freeMemory(&buff, &command, &args);
+		resetMemory(&buff, &command, &args);
 	}
+	freeMemory(&buff, &command, &args);
 
 	close(sd);
 
