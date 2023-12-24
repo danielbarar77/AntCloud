@@ -1,8 +1,11 @@
 #define CMD_RUN "run"
 #define CMD_RETURN "return"
 
-#define CLIENT_GREETING "client\n"
-#define WORKER_GREETING "worker\n"
+#define CLIENT_GREETING "client"
+#define WORKER_GREETING "worker"
+#define GREETING_SIZE 7
+// Greetings shorter than 7 bytes should be zero padded at the end!
+
 #define CONNECTION_ACCEPTED_STR "Connection accepted!"
 #define END_TRANSMISSION_SIGNAL "END_TRANSMISSION"
 #define MAX_BUF_SIZE 1000
