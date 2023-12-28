@@ -49,17 +49,13 @@ void freeMemory(char **buffer, char **command, arguments **args)
 
 void printHelp()
 {
-	int fd = open("help.txt", O_RDONLY);
-	if (fd == -1)
-	{
-		perror("Opening help.txt");
+	#include "help.txt"
+
+	int wc = write(STDOUT_FILENO, buf, sizeof(buf));
+
+	if (wc < 0){
+		perror("write");
 		return;
-	}
-	char buf[MAX_BUF_SIZE];
-	int rc, wc;
-	while ((rc = read(fd, buf, MAX_BUF_SIZE)) > 0)
-	{
-		wc = write(STDOUT_FILENO, buf, rc);
 	}
 }
 
