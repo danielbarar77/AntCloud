@@ -17,6 +17,6 @@ build/worker: src/worker.c src/base64.c
 
 clean:
 	@echo "Cleaning up"
-	rm build/*
+	rm build/client build/server build/worker
 
 .PHONY: all clean
