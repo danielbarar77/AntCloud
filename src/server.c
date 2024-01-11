@@ -105,20 +105,45 @@ int main()
                     //     break;
                     // }
                     if (hosts[cd].pConnection == NULL) {
-                        assignWorker(hosts, cd);
+                        int rc = assignWorker(hosts, cd);
+                        
+                        if (rc == 0){
+                            printf("Linking client: successful!\n");
+                        }
                     }
-                    if ((events[n].events & EPOLLIN) && hosts[cd].pConnection != NULL) {
-                        if (isSender(cd, *(hosts[cd].pConnection)) && hosts[cd].pConnection->hasMsgToRead == 0) {
-                            memset(buf, 0, MAX_BUF_SIZE);
-                            int rc = read(cd, buf, MAX_BUF_SIZE); // read msg from client
+                    if (hosts[cd].pConnection != NULL) {
+                        if (events[n].events & EPOLLIN) {
+                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 0) {
+                                
+                                memset(buf, 0, MAX_BUF_SIZE);
+                                int rc = read(cd, buf, MAX_BUF_SIZE); // read msg from client
 
-                            if (rc < 0) {
-                                perror("read");
-                            } else {
-                                printf("%d connWriteMsg: %s\n", cd, buf);
-                                connWriteMsg(buf, hosts[cd].pConnection); // write msg to worker
+                                if (rc < 0) {
+                                    perror("read");
+                                } else {
+                                    write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
+                                    write(STDOUT_FILENO, buf, rc);
+                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
+                                    connWriteMsg(buf, rc, hosts[cd].pConnection); // write msg to worker
+                                }
+                                
                             }
-                            
+                        } else if (events[n].events & EPOLLOUT) {
+                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 1) {
+                                memset(buf, 0, MAX_BUF_SIZE);
+                                int crm = connReadMsg(buf, hosts[cd].pConnection); // read msg from worker
+
+                                if (crm > 0) {
+                                    write(STDOUT_FILENO, "connReadMsg: ", sizeof("connReadMsg: "));
+                                    write(STDOUT_FILENO, buf, crm);
+                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
+                                    int wc = write(cd, buf, crm); // send msg to client
+
+                                    if (wc < 0){
+                                        perror("write");
+                                    }
+                                }
+                            }
                         }
                     }
                     break;
@@ -126,14 +151,32 @@ int main()
                     // if ((events[n].events & EPOLLOUT))
                     //     printf("Can write to worker!\n");
                     if (hosts[cd].pConnection != NULL) {
-                        if ((events[n].events & EPOLLOUT)) {
-                            if (isReceiver(cd, *(hosts[cd].pConnection))) {
+                        if (events[n].events & EPOLLIN) {
+                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 0) {
+                                
+                                memset(buf, 0, MAX_BUF_SIZE);
+                                int rc = read(cd, buf, MAX_BUF_SIZE); // read msg from worker
+
+                                if (rc < 0) {
+                                    perror("read");
+                                } else {
+                                    write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
+                                    write(STDOUT_FILENO, buf, rc);
+                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
+                                    connWriteMsg(buf, rc, hosts[cd].pConnection); // send msg to client
+                                }
+                                
+                            }
+                        } else if (events[n].events & EPOLLOUT) {
+                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 1) {
                                 memset(buf, 0, MAX_BUF_SIZE);
                                 int crm = connReadMsg(buf, hosts[cd].pConnection); // read msg from client
 
-                                if (crm == 0) {
-                                    printf("%d connReadMsg: %s\n", cd, buf);
-                                    int wc = write(cd, buf, sizeof(buf)); // send msg to worker
+                                if (crm > 0) {
+                                    write(STDOUT_FILENO, "connReadMsg: ", sizeof("connReadMsg: "));
+                                    write(STDOUT_FILENO, buf, crm);
+                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
+                                    int wc = write(cd, buf, crm); // send msg to worker
 
                                     if (wc < 0){
                                         perror("write");

@@ -359,8 +359,10 @@ int main()
 	inet_aton("localhost", &ser.sin_addr);
 
 	// Connect to the server
-	printf("Connecting to server...\n");
 	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	printf("Connection to server succesful!\n");
+	write(sd, CLIENT_GREETING, GREETING_SIZE);
+
 	loadingScreen();
 	allocMemory(&buff, &command, &args);
 	for (;;)

@@ -45,6 +45,7 @@ struct connection {
 	conn_direction_t direction;
 	char msgToRead[MAX_BUF_SIZE];
 	int hasMsgToRead;
+    int msgSize;
 };
 
 typedef struct host host_t;
@@ -59,18 +60,19 @@ extern host_t hosts[MAX_HOST_NR]; // hosts[socket_conn] = type of the host conne
 // /// @return Pointer to the next string, if exists. 0 if not.
 // char* getNextString(char message[MAX_BUF_SIZE]);
 
-/// @brief 	Writes the message from input on the connection.
+/// @brief 	Writes the message with size msgSize from input on the connection.
 ///			If the connection already has a message that has not been read yet, it fails.
 ///	@param	input
+///	@param	msgSize
 ///	@param	connection
 ///	@return	0 if successful, -1 otherwise
-int connWriteMsg(char input[MAX_BUF_SIZE], connection_t *connection);
+int connWriteMsg(char input[MAX_BUF_SIZE], int msgSize, connection_t *connection);
 
 /// @brief 	Reads the message on the connection onto output. 
 ///			If the connection doesn't have a message to be read, it fails.
 ///	@param	input
 ///	@param	connection
-///	@return	0 if successful, -1 otherwise
+///	@return	Number of bytes read, if successful, -1 otherwise
 int connReadMsg(char output[MAX_BUF_SIZE], connection_t *connection);
 
 /// @param cd_left

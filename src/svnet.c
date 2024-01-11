@@ -19,12 +19,14 @@ host_t hosts[MAX_HOST_NR] = {0};
 // 	return 0;
 // }
 
-int connWriteMsg(char input[MAX_BUF_SIZE], connection_t *connection) {
+int connWriteMsg(char input[MAX_BUF_SIZE], int msgSize, connection_t *connection) {
 	if (connection->hasMsgToRead == 1) return -1;
 	
 	// DON'T USE STRCPY, msgToRead CAN CONTAIN NULL BYTE!
-	memcpy(connection->msgToRead, input, MAX_BUF_SIZE);
+	memset(connection->msgToRead, 0, MAX_BUF_SIZE);
+	memcpy(connection->msgToRead, input, msgSize);
 	connection->hasMsgToRead = 1;
+	connection->msgSize = msgSize;
 
 	return 0;
 }
@@ -33,11 +35,13 @@ int connReadMsg(char output[MAX_BUF_SIZE], connection_t *connection) {
 	if (connection->hasMsgToRead == 0) return -1;
 	
 	// DON'T USE STRCPY, msgToRead CAN CONTAIN NULL BYTE!
-	memcpy(output, connection->msgToRead, MAX_BUF_SIZE);
+	memcpy(output, connection->msgToRead, connection->msgSize);
 	memset(connection->msgToRead, 0, MAX_BUF_SIZE);
 	connection->hasMsgToRead = 0;
+	int rez = connection->msgSize;
+	connection->msgSize = 0;
 
-	return 0;
+	return rez;
 }
 
 int getConnection(int cd_left, int cd_right) {

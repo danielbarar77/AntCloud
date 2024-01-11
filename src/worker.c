@@ -310,14 +310,14 @@ void removeFiles()
 
 int main()
 {
-	int sd, cd;
+	int sd, cd, rc;
 	char *command = NULL;
 	arguments *args = NULL;
 	struct sockaddr_in ser;
 
 	// Create a socket
-	sd = socket(AF_INET, SOCK_STREAM, 0);
-	if (sd < 0)
+	cd = socket(AF_INET, SOCK_STREAM, 0);
+	if (cd < 0)
 		printf("SOCKET NOT CREATED\n");
 
 	bzero(&ser, sizeof(struct sockaddr_in));
@@ -325,33 +325,45 @@ int main()
 	ser.sin_port = htons(1101);
 	inet_aton("localhost", &ser.sin_addr);
 
-	//////////////////////// for testing
-	int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
-	while (b == -1)
-	{
-		sleep(1);
-		printf("Bind value: %d!\n", b);
-		b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
-	}
-	printf("BIND VALUE: %d\n", b);
-	if (b == -1)
-	{
-		perror("BIND");
-		exit(-1);
-	}
-	listen(sd, 5);
-	printf("Connecting to client...\n");
+	// //////////////////////// for testing
+	// int b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
+	// while (b == -1)
+	// {
+	// 	sleep(1);
+	// 	printf("Bind value: %d!\n", b);
+	// 	b = bind(sd, (struct sockaddr *)&ser, sizeof(ser));
+	// }
+	// printf("BIND VALUE: %d\n", b);
+	// if (b == -1)
+	// {
+	// 	perror("BIND");
+	// 	exit(-1);
+	// }
+	// listen(sd, 5);
+	// printf("Connecting to client...\n");
 
-	cd = accept(sd, NULL, NULL);
-	if (cd == -1)
-	{
-		printf("Coudn't accept connection!\n");
-		return -1;
+	// cd = accept(sd, NULL, NULL);
+	// if (cd == -1)
+	// {
+	// 	printf("Coudn't accept connection!\n");
+	// 	return -1;
+	// }
+	// else
+	// {
+	// 	printf("Connection successful!\n");
+	// }
+
+	rc = connect(cd, (struct sockaddr *)&ser, sizeof(ser));
+
+	if (rc < 0){
+		perror("connect");
+		exit(1);
 	}
-	else
-	{
-		printf("Connection successful!\n");
-	}
+
+	printf("Connection to server successful!\n");
+
+	write(cd, WORKER_GREETING, GREETING_SIZE);
+
 	allocMemory(&command, &args);
 	while (1)
 	{
