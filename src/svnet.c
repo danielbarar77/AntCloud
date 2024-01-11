@@ -21,6 +21,7 @@ host_t hosts[MAX_HOST_NR] = {0};
 
 int connWriteMsg(char input[MAX_BUF_SIZE], int msgSize, connection_t *connection) {
 	if (connection->hasMsgToRead == 1) return -1;
+	if (msgSize <= 0) return 0;
 	
 	// DON'T USE STRCPY, msgToRead CAN CONTAIN NULL BYTE!
 	memset(connection->msgToRead, 0, MAX_BUF_SIZE);

@@ -113,17 +113,18 @@ int main()
                     if (hosts[cd].pConnection != NULL) {
                         if (events[n].events & EPOLLIN) {
                             if (hosts[cd].pConnection->hasMsgToRead == 0) {
-                                
                                 memset(buf, 0, MAX_BUF_SIZE);
                                 int rc = read(cd, buf, MAX_BUF_SIZE);
 
                                 if (rc < 0) {
                                     perror("read");
                                 } else {
-                                    write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
-                                    write(STDOUT_FILENO, buf, rc);
-                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
-                                    connWriteMsg(buf, rc, hosts[cd].pConnection);
+                                    if (rc > 0) {
+                                        write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
+                                        write(STDOUT_FILENO, buf, rc);
+                                        write(STDOUT_FILENO, "\n", sizeof("\n"));
+                                        connWriteMsg(buf, rc, hosts[cd].pConnection);
+                                    }
                                 }
                                 
                             }
