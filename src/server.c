@@ -97,26 +97,25 @@ int main()
                 }
             } else { // handle event
                 int cd = events[n].data.fd;
-                switch(hosts[cd].type){
-                case HOST_TYPE_CLIENT:
-                    // if(events[n].events & EPOLLHUP){
-                    //     printf("Client %d: closed connection.\n", cd);
-                    //     epoll_ctl(epollfd, EPOLL_CTL_DEL, cd, NULL);
-                    //     break;
-                    // }
-                    if (hosts[cd].pConnection == NULL) {
-                        int rc = assignWorker(hosts, cd);
-                        
-                        if (rc == 0){
-                            printf("Linking client: successful!\n");
+
+                if (hosts[cd].type != HOST_TYPE_NULL){
+
+                    if (hosts[cd].type == HOST_TYPE_CLIENT) {
+                        if (hosts[cd].pConnection == NULL) {
+                            int rc = assignWorker(hosts, cd);
+                            
+                            if (rc == 0){
+                                printf("Linking client: successful!\n");
+                            }
                         }
                     }
+
                     if (hosts[cd].pConnection != NULL) {
                         if (events[n].events & EPOLLIN) {
-                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 0) {
+                            if (hosts[cd].pConnection->hasMsgToRead == 0) {
                                 
                                 memset(buf, 0, MAX_BUF_SIZE);
-                                int rc = read(cd, buf, MAX_BUF_SIZE); // read msg from client
+                                int rc = read(cd, buf, MAX_BUF_SIZE);
 
                                 if (rc < 0) {
                                     perror("read");
@@ -124,20 +123,20 @@ int main()
                                     write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
                                     write(STDOUT_FILENO, buf, rc);
                                     write(STDOUT_FILENO, "\n", sizeof("\n"));
-                                    connWriteMsg(buf, rc, hosts[cd].pConnection); // write msg to worker
+                                    connWriteMsg(buf, rc, hosts[cd].pConnection);
                                 }
                                 
                             }
                         } else if (events[n].events & EPOLLOUT) {
-                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 1) {
+                            if (hosts[cd].pConnection->hasMsgToRead == 1) {
                                 memset(buf, 0, MAX_BUF_SIZE);
-                                int crm = connReadMsg(buf, hosts[cd].pConnection); // read msg from worker
+                                int crm = connReadMsg(buf, hosts[cd].pConnection);
 
                                 if (crm > 0) {
                                     write(STDOUT_FILENO, "connReadMsg: ", sizeof("connReadMsg: "));
                                     write(STDOUT_FILENO, buf, crm);
                                     write(STDOUT_FILENO, "\n", sizeof("\n"));
-                                    int wc = write(cd, buf, crm); // send msg to client
+                                    int wc = write(cd, buf, crm);
 
                                     if (wc < 0){
                                         perror("write");
@@ -146,51 +145,7 @@ int main()
                             }
                         }
                     }
-                    break;
-                case HOST_TYPE_WORKER:
-                    // if ((events[n].events & EPOLLOUT))
-                    //     printf("Can write to worker!\n");
-                    if (hosts[cd].pConnection != NULL) {
-                        if (events[n].events & EPOLLIN) {
-                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 0) {
-                                
-                                memset(buf, 0, MAX_BUF_SIZE);
-                                int rc = read(cd, buf, MAX_BUF_SIZE); // read msg from worker
-
-                                if (rc < 0) {
-                                    perror("read");
-                                } else {
-                                    write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
-                                    write(STDOUT_FILENO, buf, rc);
-                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
-                                    connWriteMsg(buf, rc, hosts[cd].pConnection); // send msg to client
-                                }
-                                
-                            }
-                        } else if (events[n].events & EPOLLOUT) {
-                            if (/*isSender(cd, *(hosts[cd].pConnection)) &&*/ hosts[cd].pConnection->hasMsgToRead == 1) {
-                                memset(buf, 0, MAX_BUF_SIZE);
-                                int crm = connReadMsg(buf, hosts[cd].pConnection); // read msg from client
-
-                                if (crm > 0) {
-                                    write(STDOUT_FILENO, "connReadMsg: ", sizeof("connReadMsg: "));
-                                    write(STDOUT_FILENO, buf, crm);
-                                    write(STDOUT_FILENO, "\n", sizeof("\n"));
-                                    int wc = write(cd, buf, crm); // send msg to worker
-
-                                    if (wc < 0){
-                                        perror("write");
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    // if(events[n].events & EPOLLHUP){
-                    //     printf("Client %d: closed connection.\n", cd);
-                    //     epoll_ctl(epollfd, EPOLL_CTL_DEL, cd, NULL);
-                    // }
-                    break;
-                case HOST_TYPE_NULL:
+                } else if (hosts[cd].type == HOST_TYPE_NULL) {
                     if (events[n].events & EPOLLIN) {
                         memset(buf, 0, MAX_BUF_SIZE);
                         if ( read(cd, buf, GREETING_SIZE) < 0 ) {
@@ -208,10 +163,8 @@ int main()
                             printf("%d: Invalid greeting!\n", cd);
                         }
                     }
-                    break;
-                default:
+                } else {
                     printf("Invalid host type for socket: %d\n", cd);
-                    break;
                 }
             }
         }
