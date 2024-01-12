@@ -10,6 +10,7 @@
 		"types.h": "c",
 		"networking.h": "c",
 		"sv_net.h": "c",
-		"common.h": "c"
+		"common.h": "c",
+		"string.h": "c"
 	}
 }

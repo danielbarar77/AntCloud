@@ -23,7 +23,7 @@ int main()
 
     struct epoll_event ev, events[MAX_EVENTS];
     int listen_sock, conn_sock, nfds, epollfd;
-    int hostCount = 0;
+    
 
 	char buf[MAX_BUF_SIZE] = "", fname[10];
 	struct sockaddr_in ser;
@@ -84,7 +84,7 @@ int main()
                     printf("Connection accepted: %d\n", conn_sock);
                     //fcntl(conn_sock, F_SETFL, fcntl(conn_sock, F_GETFL) | O_NONBLOCK); // set nonblocking
                     //ev.events = EPOLLIN | EPOLLOUT | EPOLLET; // edge-triggered
-                    ev.events = EPOLLIN | EPOLLOUT; // level-triggered
+                    ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP; // level-triggered
 
                     ev.data.fd = conn_sock;
                     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, conn_sock, &ev) == -1) {
@@ -99,13 +99,12 @@ int main()
                 int cd = events[n].data.fd;
 
                 if (hosts[cd].type != HOST_TYPE_NULL){
-
                     if (hosts[cd].type == HOST_TYPE_CLIENT) {
                         if (hosts[cd].pConnection == NULL) {
-                            int rc = assignWorker(hosts, cd);
+                            int rc = assignWorker(cd);
                             
                             if (rc == 0){
-                                printf("Linking client: successful!\n");
+                                printf("Linking client: successful to host cd: %d!\n", hosts[cd].pConnection->cd_right);
                             }
                         }
                     }
@@ -166,6 +165,19 @@ int main()
                     }
                 } else {
                     printf("Invalid host type for socket: %d\n", cd);
+                }
+
+                if (events[n].events & EPOLLRDHUP) {
+                    printf("Host disconnected\n"); // TODO: print host address
+                    deleteHostConnection(cd);
+                    deleteHost(cd);
+
+                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, conn_sock, &ev) == -1) {
+                        perror("epoll_ctl: conn_sock");
+                        exit(EXIT_FAILURE);
+                    }
+                    
+                    close(cd);
                 }
             }
         }

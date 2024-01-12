@@ -24,13 +24,6 @@ enum HOST_ROLE {
 
 typedef enum HOST_ROLE host_role_t;
 
-enum CONN_DIRECTION {
-	CONN_LEFTRIGHT,
-	CONN_RIGHTLEFT
-};
-
-typedef enum CONN_DIRECTION conn_direction_t;
-
 struct connection;
 typedef struct connection connection_t;
 
@@ -42,7 +35,6 @@ struct host {
 struct connection {
     int cd_left;
     int cd_right;
-	conn_direction_t direction;
 	char msgToRead[MAX_BUF_SIZE];
 	int hasMsgToRead;
     int msgSize;
@@ -52,6 +44,7 @@ typedef struct host host_t;
 
 extern connection_t connections[MAX_CONNECTION_COUNT];
 extern int connectionCount;
+extern int hostCount;
 
 extern host_t hosts[MAX_HOST_NR]; // hosts[socket_conn] = type of the host connected on the socket
 
@@ -92,22 +85,19 @@ connection_t* makeConnection(int cd_left, int cd_right);
 /// @return void
 void deleteConnection(int cd_left, int cd_right);
 
+/// @brief Deletes connection of host with connection descriptor cd in hosts
+/// @param cd
+/// @return void
+void deleteHostConnection(int cd);
+
 /// @brief  Searches in hosts for available worker. If it find one, sets the client's otherCd to the host, 
 //          and the host's otherCd to the client. The clientCd must be in hosts, otherwise the function will fail
 /// @param  host_t hosts[MAX_HOST_NR], int clientCd 
 /// @return 0 if successful, -1 otherwise 
-int assignWorker(host_t hosts[MAX_HOST_NR], int clientCd);
+int assignWorker(int clientCd);
 
-/// @brief	Checks if hosts identified by the socket descriptor cd is the sender in the connection conn
-/// @param	cd
-/// @param 	conn
-/// @return 1 if true, 0 if false
-int isSender(int cd, connection_t conn);
-
-/// @brief	Checks if hosts identified by the socket descriptor cd is the receiver in the connection conn
-/// @param	cd
-/// @param 	conn
-/// @return 1 if true, 0 if false
-int isReceiver(int cd, connection_t conn);
+/// @brief Deletes host information about socket with descriptor cd
+/// @param cd 
+void deleteHost(int cd);
 
 #endif

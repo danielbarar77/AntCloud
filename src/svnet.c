@@ -3,21 +3,8 @@
 
 connection_t connections[MAX_CONNECTION_COUNT] = {0};
 int connectionCount = 0;
+int hostCount = 0;
 host_t hosts[MAX_HOST_NR] = {0};
-
-// char* getNextString(char message[MAX_BUF_SIZE]) {
-// 	int firstNull = 0;
-
-// 	for(int i = 0; i < MAX_BUF_SIZE; i++){
-// 		if (firstNull == 0 && message[i] == 0){
-// 			firstNull = 1;
-// 		} else if (firstNull == 1 && message[i] != 0) {
-// 			return message + i;
-// 		}
-// 	}
-
-// 	return 0;
-// }
 
 int connWriteMsg(char input[MAX_BUF_SIZE], int msgSize, connection_t *connection) {
 	if (connection->hasMsgToRead == 1) return -1;
@@ -79,6 +66,30 @@ connection_t* makeConnection(int cd_left, int cd_right) {
     }
 }
 
+void deleteHostConnection(int cd){
+	if (hosts[cd].pConnection == NULL) return;
+
+	int cd_left;
+	int cd_right;
+
+	if (hosts[cd].pConnection->cd_left == cd) 
+	{
+		cd_left = cd;
+		cd_right = hosts[cd].pConnection->cd_right;
+	}
+	else 
+	{
+		cd_left = hosts[cd].pConnection->cd_left;
+		cd_right = cd;
+	}
+
+	hosts[cd_left].pConnection = NULL;
+	hosts[cd_right].pConnection = NULL;
+
+	deleteConnection(cd_left, cd_right);
+
+}
+
 void deleteConnection(int cd_left, int cd_right) {
     int connIndex = getConnection(cd_left, cd_right);
 
@@ -91,31 +102,21 @@ void deleteConnection(int cd_left, int cd_right) {
 	connectionCount--;
 }
 
-int assignWorker(host_t hosts[MAX_HOST_NR], int clientCd) {
+void deleteHost(int cd)
+{
+	memset(&(hosts[cd]), 0, sizeof(host_t));
+	hostCount--;
+}
+
+int assignWorker(int clientCd) {
     for(int i = 0; i < MAX_HOST_NR; i++){
         if (hosts[i].pConnection == 0 && hosts[i].type == HOST_TYPE_WORKER) {
             hosts[i].pConnection = makeConnection(clientCd, i);
-			hosts[i].pConnection->direction = CONN_LEFTRIGHT;
+			//hosts[i].pConnection->direction = CONN_LEFTRIGHT;
 			hosts[clientCd].pConnection = hosts[i].pConnection;
             return 0;
         }
     }
 
     return -1;
-}
-
-int isSender(int cd, connection_t conn) {
-	for(int i = 0; i < connectionCount; i++){
-		if ((conn.cd_left	== cd && conn.direction == CONN_LEFTRIGHT) ||
-			(conn.cd_right 	== cd && conn.direction == CONN_RIGHTLEFT)	) 
-		{
-			return 1;
-		}
-	}
-
-	return 0;
-}
-
-int isReceiver(int cd, connection_t conn) {
-    return !isSender(cd, conn);
 }
