@@ -26,6 +26,7 @@ void allocMemory(char **command, arguments **args)
 void resetMemory(char **command, arguments **args)
 {
 	memset(*command, 0, 64);
+	(*args)->argv[(*args)->argc] = (char *)malloc(ARGS_LENGTH * sizeof(char));
 	for (int i = 0; i < (*args)->argc; i++)
 	{
 		memset((*args)->argv[i], 0, ARGS_LENGTH);
@@ -132,11 +133,14 @@ void reciveData(int cd, arguments **args)
 	}
 	int argv_len = 0;
 	// read argvs
+	memset(buff, 0, MAX_BUF_SIZE);
 	for (int i = 0; i < (*args)->argc; i++)
 	{
 		read(cd, &argv_len, 4);
 		read(cd, buff, argv_len);
+		buff[argv_len] = '\0';
 		strncpy((*args)->argv[i], buff, argv_len);
+		memset(buff, 0, MAX_BUF_SIZE);
 	}
 	(*args)->argv[(*args)->argc] = NULL;
 
@@ -355,7 +359,8 @@ int main()
 
 	rc = connect(cd, (struct sockaddr *)&ser, sizeof(ser));
 
-	if (rc < 0){
+	if (rc < 0)
+	{
 		perror("connect");
 		exit(1);
 	}
