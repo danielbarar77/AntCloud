@@ -12,8 +12,9 @@
 #include <pthread.h>
 #include <unistd.h>
 #include <signal.h>
+#include <time.h>
 
-#include <string.h>
+#include <string.h> 
 
 #include "common.h"
 #include "svnet.h"
@@ -22,6 +23,7 @@
 #define SERVER_PORT 1101
 
 int listen_sock;
+int logFd;
 
 void signal_termination_handler(int signum){
     printf("Signal handler reached!\n");
@@ -75,6 +77,13 @@ int main()
     }
 
     printf("Binding successful on socket: %d!\n", listen_sock);
+
+    char logFileName[100];
+    time_t t = time(NULL);
+    struct tm tm = *localtime(&t);
+    sprintf(logFileName, "logs/log-%d-%02d-%02d-%02d-%02d-%02d.log", tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+
+    logFd = open(logFileName, O_WRONLY | O_CREAT, 0666);
 
 	listen(listen_sock, MAX_CONNECTION_QUEUE);
 
@@ -180,11 +189,31 @@ int main()
                         }
 
                         if(strcmp(buf, CLIENT_GREETING) == 0){
-                            printf("Added new client: %d\n", cd);
                             hosts[cd].type = HOST_TYPE_CLIENT;
+                            
+                            struct sockaddr clientSa;
+                            struct sockaddr_in* clientSaIn = (struct sockaddr_in*) &clientSa;
+                            socklen_t clientSaLen;
+                            memset(&clientSa, 0, sizeof(clientSa));
+                            getpeername(cd, &clientSa, &clientSaLen);
+                            char logMsg[50];
+                            char* ipAddr = inet_ntoa(clientSaIn->sin_addr);
+                            sprintf(logMsg, "Added new client: %s\n", ipAddr);
+                            write(logFd, logMsg, strlen(logMsg));
+                            write(STDOUT_FILENO, logMsg, strlen(logMsg));
                         } else if (strcmp(buf, WORKER_GREETING) == 0){
-                            printf("Added new worker: %d\n", cd);
                             hosts[cd].type = HOST_TYPE_WORKER;
+
+                            struct sockaddr clientSa;
+                            struct sockaddr_in* clientSaIn = (struct sockaddr_in*) &clientSa;
+                            socklen_t clientSaLen;
+                            memset(&clientSa, 0, sizeof(clientSa));
+                            getpeername(cd, &clientSa, &clientSaLen);
+                            char logMsg[50];
+                            char* ipAddr = inet_ntoa(clientSaIn->sin_addr);
+                            sprintf(logMsg, "Added new worker: %s\n", ipAddr);
+                            write(logFd, logMsg, strlen(logMsg));
+                            write(STDOUT_FILENO, logMsg, strlen(logMsg));
                         } else {
                             printf("%d: Invalid greeting!\n", cd);
                         }
