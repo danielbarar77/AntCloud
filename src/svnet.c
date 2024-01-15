@@ -1,5 +1,8 @@
 #include "svnet.h"
 #include <string.h>
+#include <netinet/in.h>
+#include <sys/socket.h>
+#include <arpa/inet.h>
 
 connection_t connections[MAX_CONNECTION_COUNT] = {0};
 int connectionCount = 0;
@@ -106,6 +109,18 @@ void deleteHost(int cd)
 {
 	memset(&(hosts[cd]), 0, sizeof(host_t));
 	hostCount--;
+}
+
+void *getIpAddress(int cd, char *ipAddr)
+{
+	struct sockaddr clientSa;
+	struct sockaddr_in* clientSaIn = (struct sockaddr_in*) &clientSa;
+	socklen_t clientSaLen;
+	memset(&clientSa, 0, sizeof(clientSa));
+	getpeername(cd, &clientSa, &clientSaLen);
+	strcpy(ipAddr, inet_ntoa(clientSaIn->sin_addr));
+
+	return;
 }
 
 int assignWorker(int clientCd) {

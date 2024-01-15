@@ -139,7 +139,16 @@ int main()
                             int rc = assignWorker(cd);
                             
                             if (rc == 0){
-                                printf("Linking client: successful to host cd: %d!\n", hosts[cd].pConnection->cd_right);
+                                char logMsg[50];
+                                char* ipAddr[50];
+                                char* ipAddr2[50];
+                                getIpAddress(cd, ipAddr);
+                                getIpAddress(hosts[cd].pConnection->cd_right, ipAddr2);
+                                
+                                sprintf(logMsg, "Linking client %s successfuly to worker: %s!\n", ipAddr, ipAddr2);
+
+                                write(logFd, logMsg, strlen(logMsg));
+                                write(STDOUT_FILENO, logMsg, strlen(logMsg));
                             }
                         }
                     }
@@ -154,9 +163,20 @@ int main()
                                     perror("read");
                                 } else {
                                     if (rc > 0) {
-                                        write(STDOUT_FILENO, "connWriteMsg: ", sizeof("connReadMsg: "));
+                                        char logMsg[50];
+                                        char* ipAddr[50];
+                                        getIpAddress(cd, ipAddr);
+                                        
+                                        sprintf(logMsg, "Write message to %s :\n", ipAddr);
+
+                                        write(logFd, logMsg, strlen(logMsg));
+                                        write(logFd, buf, rc);
+                                        write(logFd, "\n", sizeof("\n"));
+
+                                        write(STDOUT_FILENO, logMsg, strlen(logMsg));
                                         write(STDOUT_FILENO, buf, rc);
                                         write(STDOUT_FILENO, "\n", sizeof("\n"));
+
                                         connWriteMsg(buf, rc, hosts[cd].pConnection);
                                     }
                                 }
@@ -168,9 +188,21 @@ int main()
                                 int crm = connReadMsg(buf, hosts[cd].pConnection);
 
                                 if (crm > 0) {
-                                    write(STDOUT_FILENO, "connReadMsg: ", sizeof("connReadMsg: "));
+                                    char logMsg[50];
+                                    char* ipAddr[50];
+                                    getIpAddress(cd, ipAddr);
+                                    
+                                    sprintf(logMsg, "Read message from %s :\n", ipAddr);
+
+                                    write(logFd, logMsg, strlen(logMsg));
+                                    write(logFd, buf, crm);
+                                    write(logFd, "\n", sizeof("\n"));
+
+                                    write(STDOUT_FILENO, logMsg, strlen(logMsg));
                                     write(STDOUT_FILENO, buf, crm);
                                     write(STDOUT_FILENO, "\n", sizeof("\n"));
+                                    
+
                                     int wc = write(cd, buf, crm);
 
                                     if (wc < 0){
@@ -191,26 +223,20 @@ int main()
                         if(strcmp(buf, CLIENT_GREETING) == 0){
                             hosts[cd].type = HOST_TYPE_CLIENT;
                             
-                            struct sockaddr clientSa;
-                            struct sockaddr_in* clientSaIn = (struct sockaddr_in*) &clientSa;
-                            socklen_t clientSaLen;
-                            memset(&clientSa, 0, sizeof(clientSa));
-                            getpeername(cd, &clientSa, &clientSaLen);
                             char logMsg[50];
-                            char* ipAddr = inet_ntoa(clientSaIn->sin_addr);
+                            char* ipAddr[50];
+                            getIpAddress(cd, ipAddr);
+
                             sprintf(logMsg, "Added new client: %s\n", ipAddr);
                             write(logFd, logMsg, strlen(logMsg));
                             write(STDOUT_FILENO, logMsg, strlen(logMsg));
                         } else if (strcmp(buf, WORKER_GREETING) == 0){
                             hosts[cd].type = HOST_TYPE_WORKER;
 
-                            struct sockaddr clientSa;
-                            struct sockaddr_in* clientSaIn = (struct sockaddr_in*) &clientSa;
-                            socklen_t clientSaLen;
-                            memset(&clientSa, 0, sizeof(clientSa));
-                            getpeername(cd, &clientSa, &clientSaLen);
                             char logMsg[50];
-                            char* ipAddr = inet_ntoa(clientSaIn->sin_addr);
+                            char* ipAddr[50];
+                            getIpAddress(cd, ipAddr);
+
                             sprintf(logMsg, "Added new worker: %s\n", ipAddr);
                             write(logFd, logMsg, strlen(logMsg));
                             write(STDOUT_FILENO, logMsg, strlen(logMsg));
@@ -223,7 +249,14 @@ int main()
                 }
 
                 if (events[n].events & EPOLLRDHUP) {
-                    printf("Host disconnected\n"); // TODO: print host address
+                    char logMsg[50];
+                    char* ipAddr[50];
+                    getIpAddress(cd, ipAddr);
+                    
+                    sprintf(logMsg, "Host disconnected: %s\n", ipAddr);
+                    write(logFd, logMsg, strlen(logMsg));
+                    write(STDOUT_FILENO, logMsg, strlen(logMsg));
+
                     deleteHostConnection(cd);
                     deleteHost(cd);
 

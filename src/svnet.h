@@ -100,4 +100,6 @@ int assignWorker(int clientCd);
 /// @param cd 
 void deleteHost(int cd);
 
+void *getIpAddress(int cd, char *ipAddr);
+
 #endif
