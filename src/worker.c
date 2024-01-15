@@ -53,7 +53,7 @@ void reciveData(int cd, arguments **args)
 	int rc, wc;
 	int buff_length = 0, temp_length = 0;
 	// opens or create the file in which the recived data will be stored
-	int fd = open("../temp/source.c", O_WRONLY | O_CREAT | O_TRUNC, 0644);
+	int fd = open("temp/source.c", O_WRONLY | O_CREAT | O_TRUNC, 0644);
 	if (fd == -1)
 	{
 		perror("Creating source.c file");
@@ -179,7 +179,7 @@ void compile()
 	if (pid == 0)
 	{
 		if (execl("/bin/sh", "sh", "-c",
-				  "gcc ../temp/source.c -o ../temp/executable", (char *)NULL) == -1)
+				  "gcc temp/source.c -o temp/executable", (char *)NULL) == -1)
 		{
 			perror("Compilation");
 			exit(-1);
@@ -205,7 +205,7 @@ void runExecutable(arguments *args)
 	if (pid == 0)
 	{
 		// opens or create the file in which the output will be saved
-		int fd = open("../temp/output.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
+		int fd = open("temp/output.txt", O_WRONLY | O_CREAT | O_TRUNC, 0666);
 		if (fd == -1)
 		{
 			perror("Creating output for the executable");
@@ -216,7 +216,7 @@ void runExecutable(arguments *args)
 		close(fd);
 
 		// runs the executable
-		if (execv("../temp/./executable", args->argv) == -1)
+		if (execv("temp/./executable", args->argv) == -1)
 		{
 			perror("Running the executable");
 			exit(-1);
@@ -237,7 +237,7 @@ void transferData(int cd)
 	char *temp;
 	int temp_length = 0;
 	// opens the output.txt for read
-	int fd = open("../temp/output.txt", O_RDONLY);
+	int fd = open("temp/output.txt", O_RDONLY);
 	if (fd == -1)
 	{
 		perror("Reading from output.txt");
@@ -296,17 +296,17 @@ void removeFiles()
 {
 	// removes all the temporary files that were needed
 	int status;
-	if ((status = unlink("../temp/output.txt")) == -1)
+	if ((status = unlink("temp/output.txt")) == -1)
 	{
 		perror("Deleting \"output.txt\"");
 		exit(-1);
 	}
-	if ((status = unlink("../temp/source.c")) == -1)
+	if ((status = unlink("temp/source.c")) == -1)
 	{
 		perror("Deleting \"source.c\"");
 		exit(-1);
 	}
-	if ((status = unlink("../temp/executable")) == -1)
+	if ((status = unlink("temp/executable")) == -1)
 	{
 		perror("Deleting \"executable\"");
 		exit(-1);
