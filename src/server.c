@@ -1,3 +1,5 @@
+#define _XOPEN_SOURCE 700
+
 #include <netinet/in.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -9,6 +11,7 @@
 #include <fcntl.h>
 #include <pthread.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include <string.h>
 
@@ -18,15 +21,38 @@
 #define MAX_EVENTS 10
 #define SERVER_PORT 1101
 
+int listen_sock;
+
+void signal_termination_handler(int signum){
+    printf("Signal handler reached!\n");
+    close(listen_sock);
+
+    for (int i = 0; i < MAX_HOST_NR; i++){
+        if (hosts[i].type != HOST_TYPE_NULL){
+            close(i);
+        }
+    }
+
+    exit(0);
+}
+
 int main()
 {
-
     struct epoll_event ev, events[MAX_EVENTS];
-    int listen_sock, conn_sock, nfds, epollfd;
+    int conn_sock, nfds, epollfd;
     
 
 	char buf[MAX_BUF_SIZE] = "", fname[10];
 	struct sockaddr_in ser;
+
+    struct sigaction sa;
+    memset(&sa, 0, sizeof(sa));
+
+    sa.sa_flags = SA_RESETHAND;
+    sa.sa_handler = signal_termination_handler;
+    sigaction(SIGTERM, &sa, NULL);
+    sigaction(SIGKILL, &sa, NULL);
+    sigaction(SIGINT, &sa, NULL);
 
 	// Create a socket
 	listen_sock = socket(AF_INET, SOCK_STREAM, 0);
@@ -172,8 +198,8 @@ int main()
                     deleteHostConnection(cd);
                     deleteHost(cd);
 
-                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, conn_sock, &ev) == -1) {
-                        perror("epoll_ctl: conn_sock");
+                    if (epoll_ctl(epollfd, EPOLL_CTL_DEL, cd, &ev) == -1) {
+                        perror("epoll_ctl: cd");
                         exit(EXIT_FAILURE);
                     }
                     

@@ -7,6 +7,7 @@
 #include <string.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <sys/sendfile.h>
 
 #include "common.h"
 #include "base64.h"
@@ -106,6 +107,7 @@ void reciveData(int cd, arguments **args)
 		perror("writing in source.c");
 		exit(1);
 	}
+	write(STDOUT_FILENO, temp, temp_length); // DEBUG ONLY!
 	close(fd);
 	memset(buff, 0, MAX_BUF_SIZE);
 	// waiting for ARGUMENTS_SIGNAL
@@ -358,12 +360,13 @@ int main()
 	// }
 
 	rc = connect(cd, (struct sockaddr *)&ser, sizeof(ser));
-
-	if (rc < 0)
-	{
-		perror("connect");
-		exit(1);
-	}
+	int conAttempt = 0;
+	while ( rc < 0 ) {
+		rc = connect(cd, (struct sockaddr *)&ser, sizeof(ser));
+		printf("Retrying to connect... %d\n", conAttempt);
+		conAttempt++;
+		sleep(1);
+	} 
 
 	printf("Connection to server successful!\n");
 

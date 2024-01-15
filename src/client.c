@@ -347,6 +347,7 @@ int main()
 	char *buff = NULL, *command = NULL;
 	arguments *args = NULL;
 	struct sockaddr_in ser;
+	int rc = 0;
 
 	// Create a socket
 	sd = socket(AF_INET, SOCK_STREAM, 0);
@@ -359,7 +360,16 @@ int main()
 	inet_aton("localhost", &ser.sin_addr);
 
 	// Connect to the server
-	connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	rc = connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+	int conAttempt = 0;
+	while ( rc < 0 ) {
+		rc = connect(sd, (struct sockaddr *)&ser, sizeof(ser));
+		printf("Retrying to connect... %d\n", conAttempt);
+		conAttempt++;
+		sleep(1);
+	} 
+	
+
 	printf("Connection to server succesful!\n");
 	write(sd, CLIENT_GREETING, GREETING_SIZE);
 
